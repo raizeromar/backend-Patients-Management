@@ -86,3 +86,25 @@ class PatientRecordListSerializer(serializers.ModelSerializer):
 
     def get_total_medicine_price(self, obj):
         return obj.total_medicine_price_per_record()
+
+class PatientRecordDetailSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source='doctor.name')
+    doctor_specialization = serializers.CharField(source='doctor.specialization')
+    prescribed_medicines = PrescribedMedicineSerializer(many=True, read_only=True)
+    total_medicine_price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Record
+        fields = [
+            'id', 
+            'doctor',
+            'doctor_name',
+            'doctor_specialization',
+            'vital_signs',
+            'issued_date',
+            'prescribed_medicines',
+            'total_medicine_price'
+        ]
+
+    def get_total_medicine_price(self, obj):
+        return obj.total_medicine_price_per_record()
