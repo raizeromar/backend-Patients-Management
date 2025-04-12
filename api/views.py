@@ -8,9 +8,19 @@ from .serializers import (
     MedicineSerializer, RecordSerializer, 
     PrescribedMedicineSerializer, DoctorSerializer,
     PatientRecordListSerializer, PatientRecordDetailSerializer,
-    PatientPrescribedMedicineSerializer
+    PatientPrescribedMedicineSerializer, MedicineReportSerializer
 )
 from django.db.models import Sum, F
+from django_filters import rest_framework as django_filters
+from datetime import datetime
+
+class MedicineReportFilter(django_filters.FilterSet):
+    from_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='gte')
+    to_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='lte')
+
+    class Meta:
+        model = PrescribedMedicine
+        fields = ['from_date', 'to_date']
 
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
@@ -63,7 +73,7 @@ class PatientViewSet(viewsets.ModelViewSet):
 class MedicineViewSet(viewsets.ModelViewSet):
     queryset = Medicine.objects.all()
     serializer_class = MedicineSerializer
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
     search_fields = ['name', 'scientific_name']
 
 class RecordViewSet(viewsets.ModelViewSet):
@@ -89,11 +99,13 @@ class PrescribedMedicineViewSet(viewsets.ModelViewSet):
     queryset = PrescribedMedicine.objects.all()
     serializer_class = PrescribedMedicineSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['record']
+    filterset_class = MedicineReportFilter
 
     @action(detail=False, methods=['get'], url_path='report')
     def medicines_report(self, request):
-        medicines_summary = PrescribedMedicine.objects.values(
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        medicines_summary = queryset.values(
             'medicine__name',
             'medicine__dose',
             'medicine__price'
@@ -112,13 +124,22 @@ class PrescribedMedicineViewSet(viewsets.ModelViewSet):
                 }
                 for item in medicines_summary
             ],
-            'total_price_all_patients': PrescribedMedicine.get_total_price_all_patients()
+            'total_price_all_patients': queryset.annotate(
+                item_total=F('medicine__price') * F('quantity')
+            ).aggregate(
+                total_price=Sum('item_total')
+            )['total_price'] or 0,
+            'date_range': {
+                'from': request.query_params.get('from_date'),
+                'to': request.query_params.get('to_date')
+            }
         }
         
-        return Response(data)
+        serializer = MedicineReportSerializer(data)
+        return Response(serializer.data)
 
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
     search_fields = ['name', 'specialization']

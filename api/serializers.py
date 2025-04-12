@@ -151,3 +151,14 @@ class PatientRecordDetailSerializer(serializers.ModelSerializer):
 
     def get_total_medicine_price(self, obj):
         return obj.total_medicine_price_per_record()
+
+class MedicineReportItemSerializer(serializers.Serializer):
+    medicine = serializers.CharField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    quantity = serializers.IntegerField()
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+class MedicineReportSerializer(serializers.Serializer):
+    medicines = MedicineReportItemSerializer(many=True)
+    total_price_all_patients = serializers.DecimalField(max_digits=10, decimal_places=2)
+    date_range = serializers.DictField()
