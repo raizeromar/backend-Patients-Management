@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Patient, Medicine, Record, PrescribedMedicine
+from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
@@ -15,12 +15,22 @@ class MedicineAdmin(admin.ModelAdmin):
 
 @admin.register(Record)
 class RecordAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'doctor_specialization', 'issued_date', 'created_at')
-    search_fields = ('patient__full_name', 'doctor_specialization')
-    list_filter = ('doctor_specialization', 'issued_date')
+    list_display = ('patient', 'get_doctor_specialization', 'issued_date', 'created_at')
+    search_fields = ('patient__full_name', 'doctor__specialization')
+    list_filter = ('doctor__specialization', 'issued_date')
+
+    def get_doctor_specialization(self, obj):
+        return obj.doctor.specialization
+    get_doctor_specialization.short_description = 'Doctor Specialization'
 
 @admin.register(PrescribedMedicine)
 class PrescribedMedicineAdmin(admin.ModelAdmin):
-    list_display = ('record', 'medicine', 'dose', 'quantity')
+    list_display = ('record', 'medicine', 'quantity')
     search_fields = ('medicine__name', 'record__patient__full_name')
     list_filter = ('medicine',)
+
+@admin.register(Doctor)
+class DoctorAdmin(admin.ModelAdmin):
+    list_display = ('name', 'specialization', 'created_at')
+    search_fields = ('name', 'specialization')
+    list_filter = ('specialization',)

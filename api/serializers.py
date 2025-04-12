@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Patient, Medicine, Record, PrescribedMedicine
+from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor
 
 class MedicineSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,20 +9,38 @@ class MedicineSerializer(serializers.ModelSerializer):
 class PrescribedMedicineSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source='medicine.name', read_only=True)
     medicine_price = serializers.DecimalField(source='medicine.price', max_digits=10, decimal_places=2, read_only=True)
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     
     class Meta:
         model = PrescribedMedicine
-        fields = ['id', 'medicine', 'medicine_name', 'dose', 'quantity', 'medicine_price']
+        fields = ['id', 'medicine', 'medicine_name', 'dose', 'quantity', 'medicine_price', 'total_price']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['total_price'] = instance.total_price()
+        return representation
+
+class DoctorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Doctor
+        fields = ['id', 'name', 'specialization', 'created_at', 'updated_at']
 
 class RecordSerializer(serializers.ModelSerializer):
     prescribed_medicines = PrescribedMedicineSerializer(many=True, read_only=True)
-    total_given_medicines = serializers.IntegerField(read_only=True)
+    total_medicine_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    doctor_name = serializers.CharField(source='doctor.name', read_only=True)
+    doctor_specialization = serializers.CharField(source='doctor.specialization', read_only=True)
     
     class Meta:
         model = Record
-        fields = ['id', 'patient', 'doctor_specialization', 'vital_signs', 
-                  'issued_date', 'created_at', 'prescribed_medicines', 
-                  'total_given_medicines']
+        fields = ['id', 'patient', 'doctor', 'doctor_name', 'doctor_specialization',
+                 'vital_signs', 'issued_date', 'created_at', 'prescribed_medicines', 
+                 'total_medicine_price', 'total_given_medicines']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['total_medicine_price'] = instance.total_medicine_price_per_record()
+        return representation
 
 class PatientSerializer(serializers.ModelSerializer):
     records_count = serializers.SerializerMethodField()
@@ -30,9 +48,8 @@ class PatientSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Patient
-        fields = ['id', 'full_name', 'age', 'gender', 'area', 'mobile_number', 
-                  'past_illnesses', 'status', 'created_at', 'updated_at', 
-                  'records_count', 'last_visit']
+        fields = ['id', 'full_name', 'age', 'area', 'records_count', 
+                 'last_visit', 'status']
     
     def get_records_count(self, obj):
         return obj.records.count()
@@ -41,8 +58,31 @@ class PatientSerializer(serializers.ModelSerializer):
         last_record = obj.records.order_by('-issued_date').first()
         return last_record.issued_date if last_record else None
 
-class PatientDetailSerializer(PatientSerializer):
-    records = RecordSerializer(many=True, read_only=True)
+class PatientDetailSerializer(serializers.ModelSerializer):
+    records = serializers.SerializerMethodField()
     
-    class Meta(PatientSerializer.Meta):
-        fields = PatientSerializer.Meta.fields + ['records']
+    class Meta:
+        model = Patient
+        fields = ['id', 'full_name', 'age', 'gender', 'area', 'status', 'records']
+    
+    def get_records(self, obj):
+        records = obj.records.all().order_by('-issued_date')
+        return [{
+            'id': record.id,
+            'doctor_specialization': record.doctor.specialization,
+            'total_given_medicines': record.total_given_medicines,
+            'issued_date': record.issued_date
+        } for record in records]
+
+class PatientRecordListSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source='doctor.name')
+    total_given_medicines = serializers.IntegerField()
+    total_medicine_price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Record
+        fields = ['id', 'doctor', 'doctor_name', 'issued_date', 
+                 'total_given_medicines', 'total_medicine_price']
+
+    def get_total_medicine_price(self, obj):
+        return obj.total_medicine_price_per_record()
