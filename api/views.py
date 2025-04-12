@@ -14,7 +14,12 @@ from django.db.models import Sum, F
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
-    
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = PatientDetailSerializer(instance)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['get'])
     def records(self, request, pk=None):
         patient = self.get_object()
