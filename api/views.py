@@ -91,10 +91,31 @@ class PrescribedMedicineViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['record']
 
-    @action(detail=False, methods=['get'])
-    def total_price_all_patients(self, request):
-        total = PrescribedMedicine.get_total_price_all_patients()
-        return Response({'total_price': total})
+    @action(detail=False, methods=['get'], url_path='report')
+    def medicines_report(self, request):
+        medicines_summary = PrescribedMedicine.objects.values(
+            'medicine__name',
+            'medicine__dose',
+            'medicine__price'
+        ).annotate(
+            total_quantity=Sum('quantity'),
+            total_price=Sum(F('medicine__price') * F('quantity'))
+        ).order_by('medicine__name')
+
+        data = {
+            'medicines': [
+                {
+                    'medicine': f"{item['medicine__name']} {item['medicine__dose']}",
+                    'price': item['medicine__price'],
+                    'quantity': item['total_quantity'],
+                    'total_price': item['total_price']
+                }
+                for item in medicines_summary
+            ],
+            'total_price_all_patients': PrescribedMedicine.get_total_price_all_patients()
+        }
+        
+        return Response(data)
 
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
