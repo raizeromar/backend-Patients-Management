@@ -25,6 +25,27 @@ class PrescribedMedicineSerializer(serializers.ModelSerializer):
     def get_total_price(self, obj):
         return obj.medicine.price * obj.quantity
 
+class PatientPrescribedMedicineSerializer(serializers.ModelSerializer):
+    record_id = serializers.IntegerField(source='record.id')
+    medicine_name = serializers.CharField(source='medicine.name', read_only=True)
+    medicine_price = serializers.DecimalField(source='medicine.price', max_digits=10, decimal_places=2, read_only=True)
+    total_price = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PrescribedMedicine
+        fields = [
+            'id',
+            'record_id',
+            'medicine',
+            'medicine_name',
+            'quantity',
+            'medicine_price',
+            'total_price'
+        ]
+
+    def get_total_price(self, obj):
+        return obj.medicine.price * obj.quantity
+
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Doctor

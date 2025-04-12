@@ -7,7 +7,8 @@ from .serializers import (
     PatientSerializer, PatientDetailSerializer, 
     MedicineSerializer, RecordSerializer, 
     PrescribedMedicineSerializer, DoctorSerializer,
-    PatientRecordListSerializer, PatientRecordDetailSerializer
+    PatientRecordListSerializer, PatientRecordDetailSerializer,
+    PatientPrescribedMedicineSerializer
 )
 from django.db.models import Sum, F
 
@@ -44,6 +45,20 @@ class PatientViewSet(viewsets.ModelViewSet):
                 {"detail": "Record not found"}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+
+    @action(detail=True, methods=['get'])
+    def prescribed_medicines(self, request, pk=None):
+        patient = self.get_object()
+        prescribed_medicines = PrescribedMedicine.objects.filter(
+            record__patient=patient
+        ).select_related('medicine', 'record')
+        
+        serializer = PatientPrescribedMedicineSerializer(prescribed_medicines, many=True)
+        
+        return Response({
+            'prescribed_medicines': serializer.data,
+            'total_medicine_price_per_patient': patient.total_medicine_price_per_patient()
+        })
 
 class MedicineViewSet(viewsets.ModelViewSet):
     queryset = Medicine.objects.all()
