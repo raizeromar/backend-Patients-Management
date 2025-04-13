@@ -23,7 +23,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - static_volume:/app/staticfiles
     ports:
-      - "9000:80"
+      - "8080:80"  # Host port 8080 maps to container port 80
     depends_on:
       web:
         condition: service_healthy
