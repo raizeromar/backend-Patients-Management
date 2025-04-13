@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: gunicorn patients_management.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/app/staticfiles
+      - sqlite_data:/app/data
+    expose:
+      - 8000
+    env_file:
+      - .env
+
+  nginx:
+    image: nginx:1.25
+    volumes:
+      - static_volume:/app/staticfiles
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+
+volumes:
+  sqlite_data:
+  static_volume:
