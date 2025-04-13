@@ -117,9 +117,22 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = [
+    'https://apibankaldawaa.gatara.org',
+    'http://apibankaldawaa.gatara.org',
+]
+
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+CORS_ALLOW_CREDENTIALS = True
+
+# Session settings
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Rest Framework settings
 REST_FRAMEWORK = {
