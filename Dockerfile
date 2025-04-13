@@ -8,6 +8,12 @@ ENV PYTHONUNBUFFERED=1
 # Set work directory
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
@@ -22,4 +28,4 @@ RUN mkdir -p /app/data && chmod 777 /app/data
 RUN python manage.py collectstatic --noinput
 
 # Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "patients_management.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "patients_management.wsgi:application", "--log-level", "debug"]
