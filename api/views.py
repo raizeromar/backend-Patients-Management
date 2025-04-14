@@ -300,6 +300,39 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
+
+@extend_schema(
+    description='Register a new user',
+    request={
+        'application/json': {
+            'type': 'object',
+            'properties': {
+                'username': {'type': 'string', 'description': 'Username for the new account'},
+                'password': {'type': 'string', 'description': 'Password for the new account', 'format': 'password'}
+            },
+            'required': ['username', 'password']
+        }
+    },
+    responses={
+        201: {
+            'description': 'User created successfully',
+            'type': 'object',
+            'properties': {
+                'id': {'type': 'integer', 'description': 'User ID'},
+                'username': {'type': 'string', 'description': 'Username'},
+                'message': {'type': 'string', 'description': 'Success message'}
+            }
+        },
+        400: {
+            'description': 'Bad request',
+            'type': 'object',
+            'properties': {
+                'error': {'type': 'string', 'description': 'Error message'}
+            }
+        }
+    },
+    tags=['authentication']
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
