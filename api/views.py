@@ -13,6 +13,7 @@ from .serializers import (
 from django.db.models import Sum, F
 from django_filters import rest_framework as django_filters
 from datetime import datetime
+from rest_framework.permissions import IsAuthenticated
 
 class MedicineReportFilter(django_filters.FilterSet):
     from_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='gte')
@@ -23,6 +24,7 @@ class MedicineReportFilter(django_filters.FilterSet):
         fields = ['from_date', 'to_date']
 
 class PatientViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
 
@@ -71,12 +73,14 @@ class PatientViewSet(viewsets.ModelViewSet):
         })
 
 class MedicineViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = Medicine.objects.all()
     serializer_class = MedicineSerializer
     filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
     search_fields = ['name', 'scientific_name']
 
 class RecordViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = Record.objects.all()
     serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
@@ -96,6 +100,7 @@ class RecordViewSet(viewsets.ModelViewSet):
         return Response({'total_price': total})
 
 class PrescribedMedicineViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = PrescribedMedicine.objects.all()
     serializer_class = PrescribedMedicineSerializer
     filter_backends = [DjangoFilterBackend]
@@ -139,6 +144,7 @@ class PrescribedMedicineViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 class DoctorViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
