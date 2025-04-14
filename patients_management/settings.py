@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt',
+    'drf_spectacular',
     'api',
 ]
 
@@ -113,10 +114,28 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # JWT settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=30),    # Access token lasts 30 days
     'REFRESH_TOKEN_LIFETIME': timedelta(days=90),   # Refresh token lasts 90 days
+}
+
+# Add Spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Patients Management API',
+    'DESCRIPTION': 'API for managing patients, doctors, medicines, and medical records',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'TAGS': [
+        {'name': 'patients', 'description': 'Patient management endpoints'},
+        {'name': 'medicines', 'description': 'Medicine management endpoints'},
+        {'name': 'records', 'description': 'Medical records management endpoints'},
+        {'name': 'doctors', 'description': 'Doctor management endpoints'},
+        {'name': 'prescribed-medicines', 'description': 'Prescribed medicines management endpoints'},
+        {'name': 'authentication', 'description': 'Authentication endpoints'},
+    ],
 }

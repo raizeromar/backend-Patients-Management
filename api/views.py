@@ -14,6 +14,10 @@ from django.db.models import Sum, F
 from django_filters import rest_framework as django_filters
 from datetime import datetime
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.types import OpenApiTypes
+from decimal import Decimal
+from .filters import RecordFilter
 
 class MedicineReportFilter(django_filters.FilterSet):
     from_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='gte')
@@ -23,6 +27,23 @@ class MedicineReportFilter(django_filters.FilterSet):
         model = PrescribedMedicine
         fields = ['from_date', 'to_date']
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all patients",
+        description="Returns a list of all patients with basic information",
+        tags=["patients"]
+    ),
+    retrieve=extend_schema(
+        summary="Get patient details",
+        description="Returns detailed information about a specific patient",
+        tags=["patients"]
+    ),
+    create=extend_schema(
+        summary="Create new patient",
+        description="Create a new patient record",
+        tags=["patients"]
+    ),
+)
 class PatientViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Patient.objects.all()
@@ -58,6 +79,12 @@ class PatientViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @extend_schema(
+        summary="Get patient's prescribed medicines",
+        description="Returns a list of all medicines prescribed to the patient",
+        tags=["patients"],
+        responses={200: PatientPrescribedMedicineSerializer(many=True)}
+    )
     @action(detail=True, methods=['get'])
     def prescribed_medicines(self, request, pk=None):
         patient = self.get_object()
@@ -72,6 +99,13 @@ class PatientViewSet(viewsets.ModelViewSet):
             'total_medicine_price_per_patient': patient.total_medicine_price_per_patient()
         })
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all medicines",
+        description="Returns a list of all available medicines",
+        tags=["medicines"]
+    ),
+)
 class MedicineViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Medicine.objects.all()
@@ -79,13 +113,31 @@ class MedicineViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
     search_fields = ['name', 'scientific_name']
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List all medical records",
+        description="Returns a list of all medical records",
+        tags=["records"]
+    ),
+    retrieve=extend_schema(
+        summary="Get record details",
+        description="Returns detailed information about a specific medical record",
+        tags=["records"]
+    )
+)
 class RecordViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Record.objects.all()
     serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['patient', 'doctor_specialization']
-    
+    filterset_class = RecordFilter  # Use the custom filter class
+
+    @extend_schema(
+        summary="Get prescribed medicines for record",
+        description="Returns a list of medicines prescribed in this record",
+        tags=["records"],
+        responses={200: PrescribedMedicineSerializer(many=True)}
+    )
     @action(detail=True, methods=['get'])
     def prescribed_medicines(self, request, pk=None):
         record = self.get_object()
@@ -93,6 +145,14 @@ class RecordViewSet(viewsets.ModelViewSet):
         serializer = PrescribedMedicineSerializer(medicines, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Get total medicine price",
+        description="Calculate total price of all medicines in this record",
+        tags=["records"],
+        responses={200: {"type": "object", "properties": {
+            "total_price": {"type": "number", "format": "decimal"}
+        }}}
+    )
     @action(detail=True, methods=['get'])
     def total_medicine_price(self, request, pk=None):
         record = self.get_object()

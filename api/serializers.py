@@ -1,5 +1,10 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.types import OpenApiTypes
 from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor
+from decimal import Decimal
+from django.db.models import Count
+from datetime import date
 
 class MedicineSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,7 +27,8 @@ class PrescribedMedicineSerializer(serializers.ModelSerializer):
             'total_price'
         ]
 
-    def get_total_price(self, obj):
+    @extend_schema_field(OpenApiTypes.DECIMAL)
+    def get_total_price(self, obj) -> Decimal:
         return obj.medicine.price * obj.quantity
 
 class PatientPrescribedMedicineSerializer(serializers.ModelSerializer):
@@ -71,16 +77,17 @@ class RecordSerializer(serializers.ModelSerializer):
 class PatientSerializer(serializers.ModelSerializer):
     records_count = serializers.SerializerMethodField()
     last_visit = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Patient
-        fields = ['id', 'full_name', 'age', 'area', 'records_count', 
-                 'last_visit', 'status']
-    
-    def get_records_count(self, obj):
+        fields = ['id', 'full_name', 'age', 'area', 'status', 'records_count', 'last_visit']
+
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_records_count(self, obj) -> int:
         return obj.records.count()
-    
-    def get_last_visit(self, obj):
+
+    @extend_schema_field(OpenApiTypes.DATE)
+    def get_last_visit(self, obj) -> date:
         last_record = obj.records.order_by('-issued_date').first()
         return last_record.issued_date if last_record else None
 

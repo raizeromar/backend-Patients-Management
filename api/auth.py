@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_spectacular.utils import extend_schema
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -19,6 +20,16 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+@extend_schema(
+    summary="Register new user",
+    description="Register a new user and return access and refresh tokens",
+    tags=["authentication"],
+    request=UserSerializer,
+    responses={201: {"type": "object", "properties": {
+        "refresh": {"type": "string"},
+        "access": {"type": "string"}
+    }}}
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
