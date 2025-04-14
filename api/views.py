@@ -3,6 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as django_filters
 from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor
 from .serializers import (
     PatientSerializer, PatientDetailSerializer, 
@@ -13,10 +14,10 @@ from .serializers import (
     UserSerializer
 )
 from django.db.models import Sum, F
-from django_filters import rest_framework as django_filters
 from datetime import datetime
 from django.contrib.auth.models import User
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -27,8 +28,16 @@ def health_check(request):
     )
 
 class MedicineReportFilter(django_filters.FilterSet):
-    from_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='gte')
-    to_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='lte')
+    from_date = django_filters.DateFilter(
+        field_name='record__issued_date',
+        lookup_expr='gte',
+        help_text="Filter by date from (YYYY-MM-DD)"
+    )
+    to_date = django_filters.DateFilter(
+        field_name='record__issued_date',
+        lookup_expr='lte',
+        help_text="Filter by date to (YYYY-MM-DD)"
+    )
 
     class Meta:
         model = PrescribedMedicine
@@ -97,18 +106,70 @@ class PatientViewSet(viewsets.ModelViewSet):
             'total_medicine_price_per_patient': patient.total_medicine_price_per_patient()
         })
 
+@extend_schema_view(
+    list=extend_schema(
+        description='List all medicines',
+        parameters=[
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search medicines by name or scientific name'
+            ),
+        ]
+    ),
+    retrieve=extend_schema(description='Get a specific medicine'),
+    create=extend_schema(description='Create a new medicine'),
+    update=extend_schema(description='Update a medicine'),
+    destroy=extend_schema(description='Delete a medicine'),
+)
 class MedicineViewSet(viewsets.ModelViewSet):
     queryset = Medicine.objects.all()
     serializer_class = MedicineSerializer
-    filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
+    filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'scientific_name']
 
+class RecordFilter(django_filters.FilterSet):
+    patient = django_filters.NumberFilter(help_text="Filter by patient ID")
+    doctor__specialization = django_filters.CharFilter(help_text="Filter by doctor specialization")
+    
+    class Meta:
+        model = Record
+        fields = ['patient', 'doctor__specialization']
+
+@extend_schema_view(
+    list=extend_schema(
+        description='List all medical records',
+        parameters=[
+            OpenApiParameter(
+                name='patient',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Filter by patient ID'
+            ),
+            OpenApiParameter(
+                name='doctor__specialization',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Filter by doctor specialization (e.g., Cardiology, Pediatrics)'
+            ),
+        ]
+    ),
+    retrieve=extend_schema(description='Get a specific medical record'),
+    create=extend_schema(description='Create a new medical record'),
+    update=extend_schema(description='Update a medical record'),
+    destroy=extend_schema(description='Delete a medical record'),
+)
 class RecordViewSet(viewsets.ModelViewSet):
     queryset = Record.objects.all()
     serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['patient', 'doctor__specialization']  # Changed from doctor_specialization to doctor__specialization
-    
+    filterset_class = RecordFilter
+
+    @extend_schema(
+        description='Get prescribed medicines for a specific record',
+        responses={200: PrescribedMedicineSerializer(many=True)}
+    )
     @action(detail=True, methods=['get'])
     def prescribed_medicines(self, request, pk=None):
         record = self.get_object()
@@ -116,12 +177,35 @@ class RecordViewSet(viewsets.ModelViewSet):
         serializer = PrescribedMedicineSerializer(medicines, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        description='Get total medicine price for a specific record',
+        responses={200: OpenApiTypes.OBJECT}
+    )
     @action(detail=True, methods=['get'])
     def total_medicine_price(self, request, pk=None):
         record = self.get_object()
         total = record.total_medicine_price_per_record()
         return Response({'total_price': total})
 
+@extend_schema_view(
+    list=extend_schema(
+        description='List all prescribed medicines',
+        parameters=[
+            OpenApiParameter(
+                name='from_date',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                description='Filter by date from (YYYY-MM-DD)'
+            ),
+            OpenApiParameter(
+                name='to_date',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                description='Filter by date to (YYYY-MM-DD)'
+            ),
+        ]
+    ),
+)
 class PrescribedMedicineViewSet(viewsets.ModelViewSet):
     queryset = PrescribedMedicine.objects.all()
     serializer_class = PrescribedMedicineSerializer
@@ -165,10 +249,27 @@ class PrescribedMedicineViewSet(viewsets.ModelViewSet):
         serializer = MedicineReportSerializer(data)
         return Response(serializer.data)
 
+@extend_schema_view(
+    list=extend_schema(
+        description='List all doctors',
+        parameters=[
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search doctors by name or specialization'
+            ),
+        ]
+    ),
+    retrieve=extend_schema(description='Get a specific doctor'),
+    create=extend_schema(description='Create a new doctor'),
+    update=extend_schema(description='Update a doctor'),
+    destroy=extend_schema(description='Delete a doctor'),
+)
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-    filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
+    filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'specialization']
 
 class UserViewSet(viewsets.ModelViewSet):
