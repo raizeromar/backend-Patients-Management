@@ -1,6 +1,7 @@
-from rest_framework import viewsets, filters
-from rest_framework.decorators import action
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor
 from .serializers import (
@@ -8,11 +9,21 @@ from .serializers import (
     MedicineSerializer, RecordSerializer, 
     PrescribedMedicineSerializer, DoctorSerializer,
     PatientRecordListSerializer, PatientRecordDetailSerializer,
-    PatientPrescribedMedicineSerializer, MedicineReportSerializer
+    PatientPrescribedMedicineSerializer, MedicineReportSerializer,
+    UserSerializer
 )
 from django.db.models import Sum, F
 from django_filters import rest_framework as django_filters
 from datetime import datetime
+from django.contrib.auth.models import User
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response(
+        {'status': 'healthy'},
+        status=status.HTTP_200_OK
+    )
 
 class MedicineReportFilter(django_filters.FilterSet):
     from_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='gte')
@@ -143,3 +154,18 @@ class DoctorViewSet(viewsets.ModelViewSet):
     serializer_class = DoctorSerializer
     filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
     search_fields = ['name', 'specialization']
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]  # Only for register endpoint
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        return super().get_permissions()
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)

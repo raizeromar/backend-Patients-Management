@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor
+from django.contrib.auth.models import User
 
 class MedicineSerializer(serializers.ModelSerializer):
     class Meta:
@@ -162,3 +163,8 @@ class MedicineReportSerializer(serializers.Serializer):
     medicines = MedicineReportItemSerializer(many=True)
     total_price_all_patients = serializers.DecimalField(max_digits=10, decimal_places=2)
     date_range = serializers.DictField()
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name')
