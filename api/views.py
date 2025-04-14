@@ -16,6 +16,7 @@ from django.db.models import Sum, F
 from django_filters import rest_framework as django_filters
 from datetime import datetime
 from django.contrib.auth.models import User
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -33,7 +34,17 @@ class MedicineReportFilter(django_filters.FilterSet):
         model = PrescribedMedicine
         fields = ['from_date', 'to_date']
 
+@extend_schema_view(
+    list=extend_schema(description='List all patients'),
+    retrieve=extend_schema(description='Get patient details'),
+    create=extend_schema(description='Create a new patient'),
+    update=extend_schema(description='Update patient details'),
+    destroy=extend_schema(description='Delete a patient'),
+)
 class PatientViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing patients.
+    """
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
 
@@ -67,8 +78,13 @@ class PatientViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @extend_schema(
+        description='Get all prescribed medicines for a patient',
+        responses={200: PatientPrescribedMedicineSerializer(many=True)}
+    )
     @action(detail=True, methods=['get'])
     def prescribed_medicines(self, request, pk=None):
+        """Get all prescribed medicines for a specific patient."""
         patient = self.get_object()
         prescribed_medicines = PrescribedMedicine.objects.filter(
             record__patient=patient
@@ -91,7 +107,7 @@ class RecordViewSet(viewsets.ModelViewSet):
     queryset = Record.objects.all()
     serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['patient', 'doctor_specialization']
+    filterset_fields = ['patient', 'doctor__specialization']  # Changed from doctor_specialization to doctor__specialization
     
     @action(detail=True, methods=['get'])
     def prescribed_medicines(self, request, pk=None):
