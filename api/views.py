@@ -165,7 +165,52 @@ class UserViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         return super().get_permissions()
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {
+                'id': user.id,
+                'username': user.username,
+                'message': 'User created successfully'
+            },
+            status=status.HTTP_201_CREATED
+        )
+
     @action(detail=False, methods=['get'])
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    if not username or not password:
+        return Response(
+            {'error': 'Both username and password are required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {'error': 'Username already exists'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user = User.objects.create_user(
+        username=username,
+        password=password
+    )
+    
+    return Response(
+        {
+            'id': user.id,
+            'username': user.username,
+            'message': 'User created successfully'
+        },
+        status=status.HTTP_201_CREATED
+    )

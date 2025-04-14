@@ -8,9 +8,9 @@ router.register(r'medicines', views.MedicineViewSet)
 router.register(r'records', views.RecordViewSet)
 router.register(r'prescribed-medicines', views.PrescribedMedicineViewSet)
 router.register(r'doctors', views.DoctorViewSet)
-router.register(r'users', views.UserViewSet)
 
 urlpatterns = [
     path('health/', views.health_check, name='health_check'),
+    path('register/', views.register, name='register'),
     path('', include(router.urls)),
 ]
