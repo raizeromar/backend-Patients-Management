@@ -95,7 +95,11 @@ class PatientViewSet(viewsets.ModelViewSet):
         ).select_related('prescribed_medicine', 'prescribed_medicine__medicine')
         
         serializer = GivedMedicineSerializer(given_medicines, many=True)
-        return Response(serializer.data)
+        response_data = {
+            'given_medicines': serializer.data,
+            'total_price': patient.total_medicine_price_per_patient()
+        }
+        return Response(response_data)
 
     @action(detail=True, methods=['get'])
     def records(self, request, pk=None):
