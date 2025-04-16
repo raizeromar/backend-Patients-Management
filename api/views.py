@@ -13,7 +13,12 @@ from .serializers import (
     PrescribedMedicineSerializer, DoctorSerializer,
     PastIllnessSerializer, GivedMedicineSerializer
 )
-from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse, OpenApiParameter, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from datetime import datetime, timedelta
+from django.db.models import Sum, F
+from django.utils import timezone
+from rest_framework import serializers
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -166,3 +171,166 @@ class PastIllnessViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['patient']
     search_fields = ['description']
+
+@extend_schema(
+    tags=['reports'],
+    operation_id='medicine_report_retrieve',
+    summary="Medicine Usage Report",
+    description="Get a report of all medicines given to patients with total quantities and prices",
+    parameters=[
+        OpenApiParameter(
+            name="from_date",
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            description="Start date for the report (YYYY-MM-DD)",
+            required=False
+        ),
+        OpenApiParameter(
+            name="to_date",
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            description="End date for the report (YYYY-MM-DD)",
+            required=False
+        ),
+        OpenApiParameter(
+            name="area",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Filter by patient area",
+            required=False
+        ),
+        OpenApiParameter(
+            name="period",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Predefined period ('today', 'month')",
+            required=False,
+            enum=['today', 'month']
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                name='MedicineReportResponse',
+                fields={
+                    'metadata': inline_serializer(
+                        name='MedicineReportMetadata',
+                        fields={
+                            'from_date': serializers.DateField(),
+                            'to_date': serializers.DateField(),
+                            'total_price': serializers.DecimalField(max_digits=10, decimal_places=2),
+                            'filters_applied': inline_serializer(
+                                name='FiltersApplied',
+                                fields={
+                                    'area': serializers.CharField(allow_null=True),
+                                    'period': serializers.CharField(allow_null=True),
+                                }
+                            ),
+                        }
+                    ),
+                    'medicines': inline_serializer(
+                        name='MedicineReportDetail',
+                        fields={
+                            'medicine_name': serializers.CharField(),
+                            'total_quantity': serializers.IntegerField(),
+                            'price_per_unit': serializers.DecimalField(max_digits=10, decimal_places=2),
+                            'total_price': serializers.DecimalField(max_digits=10, decimal_places=2),
+                        },
+                        many=True
+                    ),
+                }
+            ),
+            examples=[
+                OpenApiExample(
+                    'Success Response',
+                    value={
+                        "metadata": {
+                            "from_date": "2025-04-01",
+                            "to_date": "2025-04-16",
+                            "total_price": "1250.00",
+                            "filters_applied": {
+                                "area": "New York",
+                                "period": "month"
+                            }
+                        },
+                        "medicines": [
+                            {
+                                "medicine_name": "Amoxicillin",
+                                "total_quantity": 50,
+                                "price_per_unit": "8.50",
+                                "total_price": "425.00"
+                            }
+                        ]
+                    }
+                )
+            ]
+        )
+    }
+)
+@api_view(['GET'])
+def medicines_report(request):
+    # Get query parameters
+    from_date = request.query_params.get('from_date')
+    to_date = request.query_params.get('to_date')
+    area = request.query_params.get('area')
+    period = request.query_params.get('period')
+
+    # Base queryset
+    queryset = GivedMedicine.objects.all()
+
+    # Apply date filters
+    if period == 'today':
+        today = timezone.now().date()
+        queryset = queryset.filter(given_at__date=today)
+        from_date = today
+        to_date = today
+    elif period == 'month':
+        today = timezone.now().date()
+        from_date = today.replace(day=1)
+        to_date = today
+        queryset = queryset.filter(given_at__date__gte=from_date, given_at__date__lte=to_date)
+    else:
+        if from_date:
+            queryset = queryset.filter(given_at__date__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(given_at__date__lte=to_date)
+
+    # Apply area filter
+    if area:
+        queryset = queryset.filter(patient__area=area)
+
+    # Aggregate data by medicine
+    medicines_data = queryset.values(
+        'prescribed_medicine__medicine__name',
+        'prescribed_medicine__medicine__dose',
+        'prescribed_medicine__medicine__price'
+    ).annotate(
+        total_quantity=Sum('quantity'),
+        total_price=Sum(F('prescribed_medicine__medicine__price') * F('quantity'))
+    ).order_by('prescribed_medicine__medicine__name')
+
+    # Calculate total price
+    total_price = sum(item['total_price'] for item in medicines_data)
+
+    response_data = {
+        "metadata": {
+            "from_date": from_date,
+            "to_date": to_date,
+            "total_price": total_price,
+            "filters_applied": {
+                "area": area,
+                "period": period
+            }
+        },
+        "medicines": [
+            {
+                "medicine_name": f"{item['prescribed_medicine__medicine__name']} ({item['prescribed_medicine__medicine__dose']})",
+                "total_quantity": item['total_quantity'],
+                "price_per_unit": item['prescribed_medicine__medicine__price'],
+                "total_price": item['total_price']
+            }
+            for item in medicines_data
+        ]
+    }
+
+    return Response(response_data)

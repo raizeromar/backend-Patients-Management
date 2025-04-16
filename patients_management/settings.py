@@ -205,6 +205,7 @@ Features:
         {'name': 'records', 'description': 'Medical records operations'},
         {'name': 'doctors', 'description': 'Doctor management operations'},
         {'name': 'prescribed-medicines', 'description': 'Prescription management operations'},
+        {'name': 'reports', 'description': 'Report generation endpoints'},
     ],
     'SWAGGER_UI_SETTINGS': {
         'persistAuthorization': True,

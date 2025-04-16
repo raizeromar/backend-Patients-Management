@@ -68,3 +68,18 @@
   - Records: Filter by patient and doctor specialization
   - Doctors: Search by name and specialization
   - Prescribed medicines report: Filter by date range
+
+## Medicine Reports
+
+### Medicine Usage Report
+- `GET /api/medicine-report/` - Get detailed medicine usage report
+  - Query Parameters:
+    - `from_date` (optional): Start date in YYYY-MM-DD format
+    - `to_date` (optional): End date in YYYY-MM-DD format
+    - `area` (optional): Filter by patient area
+    - `period` (optional): Predefined period ('today' or 'month')
+  - Response includes:
+    - Metadata (date range, total price, applied filters)
+    - Table of medicines with quantities and prices
+    - Total medicine price across all filtered results
+  - Example: `/api/medicine-report/?period=month&area=New York`

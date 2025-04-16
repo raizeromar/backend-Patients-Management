@@ -16,4 +16,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('health/', views.health_check, name='health-check'),
     path('register/', views.register_user, name='register-user'),
+    path('medicine-report/', views.medicines_report, name='medicine-report'),
 ]
