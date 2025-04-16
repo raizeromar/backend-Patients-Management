@@ -28,7 +28,7 @@ class DoctorAdmin(admin.ModelAdmin):
 
 @admin.register(Record)
 class RecordAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'doctor', 'issued_date', 'created_at', 'total_given_medicines')
+    list_display = ('patient', 'doctor', 'issued_date', 'created_at', 'total_prescribed_medicines')
     search_fields = ('patient__full_name', 'doctor__name', 'doctor__specialization')
     list_filter = ('doctor__specialization', 'issued_date')
     readonly_fields = ('created_at',)

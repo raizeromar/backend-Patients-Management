@@ -78,13 +78,14 @@ class RecordSerializer(serializers.ModelSerializer):
     total_medicine_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     doctor_name = serializers.CharField(source='doctor.name', read_only=True)
     doctor_specialization = serializers.CharField(source='doctor.specialization', read_only=True)
+    total_prescribed_medicines = serializers.IntegerField(read_only=True)  # Updated field name
     
     class Meta:
         model = Record
         fields = [
             'id', 'patient', 'doctor', 'doctor_name', 'doctor_specialization',
             'past_illness', 'vital_signs', 'issued_date', 'created_at',
-            'prescribed_medicines', 'total_medicine_price', 'total_given_medicines'
+            'prescribed_medicines', 'total_medicine_price', 'total_prescribed_medicines'  # Updated field name
         ]
 
     def to_representation(self, instance):

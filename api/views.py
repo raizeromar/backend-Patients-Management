@@ -47,6 +47,17 @@ class PatientViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'])
+    def given_medicines(self, request, pk=None):
+        """Get all given medicines for a specific patient"""
+        patient = self.get_object()
+        given_medicines = GivedMedicine.objects.filter(
+            patient=patient
+        ).select_related('prescribed_medicine', 'prescribed_medicine__medicine')
+        
+        serializer = GivedMedicineSerializer(given_medicines, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
     def records(self, request, pk=None):
         """Get all records for a specific patient"""
         patient = self.get_object()

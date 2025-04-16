@@ -83,12 +83,7 @@ class Doctor(models.Model):
 class Record(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='records')
     doctor = models.ForeignKey(Doctor, on_delete=models.PROTECT, related_name='records')
-    past_illness = models.ForeignKey(
-        Past_Illness, 
-        on_delete=models.PROTECT, 
-        related_name='records',
-        null=True
-    )
+    past_illness = models.ForeignKey(Past_Illness, on_delete=models.PROTECT, related_name='records', null=True)
     vital_signs = models.TextField(blank=True)
     issued_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -97,7 +92,7 @@ class Record(models.Model):
         return f"Record for {self.patient.full_name} - {self.issued_date}"
     
     @property
-    def total_given_medicines(self):
+    def total_prescribed_medicines(self):  # Renamed from total_given_medicines
         return self.prescribed_medicines.count()
 
     def total_medicine_price_per_record(self):
