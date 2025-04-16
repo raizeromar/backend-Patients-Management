@@ -62,7 +62,14 @@ class PrescribedMedicineSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PrescribedMedicine
-        fields = ['id', 'medicine', 'medicine_name', 'medicine_price', 'dosage']
+        fields = ['id', 'record', 'medicine', 'medicine_name', 'medicine_price', 'dosage']
+        swagger_schema_fields = {
+            'example': {
+                'record': 1,
+                'medicine': 1,
+                'dosage': '1 tablet twice daily'
+            }
+        }
 
 class GivedMedicineSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source='prescribed_medicine.medicine.name', read_only=True)
