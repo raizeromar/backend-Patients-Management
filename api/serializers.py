@@ -8,16 +8,19 @@ class UserSerializer(serializers.ModelSerializer):
         write_only=True,
         required=True,
         style={'input_type': 'password'},
+        help_text='Required. Must be at least 5 characters long.',
         validators=[MinLengthValidator(5)]
     )
     password2 = serializers.CharField(
         write_only=True,
         required=True,
-        style={'input_type': 'password'}
+        style={'input_type': 'password'},
+        help_text='Required. Must match the password field.'
     )
     number = serializers.CharField(
         required=False,
-        max_length=20
+        max_length=20,
+        help_text='Optional. Phone number for contact purposes.'
     )
 
     class Meta:

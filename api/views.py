@@ -13,13 +13,52 @@ from .serializers import (
     PrescribedMedicineSerializer, DoctorSerializer,
     PastIllnessSerializer, GivedMedicineSerializer
 )
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
     return Response({'status': 'healthy'}, status=status.HTTP_200_OK)
 
+@extend_schema(
+    tags=['authentication'],
+    operation_id='register_user',
+    description='Register a new user account',
+    request=UserSerializer,
+    responses={
+        201: OpenApiResponse(
+            response=OpenApiExample(
+                'Success Response',
+                value={'message': 'User created successfully'},
+                status_codes=['201']
+            ),
+            description='User successfully created'
+        ),
+        400: OpenApiResponse(
+            response=OpenApiExample(
+                'Error Response',
+                value={
+                    'password': ['Password fields didn\'t match.'],
+                    'username': ['This field is required.']
+                },
+                status_codes=['400']
+            ),
+            description='Invalid input'
+        )
+    },
+    examples=[
+        OpenApiExample(
+            'Valid Request',
+            value={
+                'username': 'john_doe',
+                'password': 'secure123',
+                'password2': 'secure123',
+                'number': 'Optional 1234567890'
+            },
+            request_only=True,
+        )
+    ]
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
