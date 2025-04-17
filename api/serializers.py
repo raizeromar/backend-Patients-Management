@@ -5,6 +5,56 @@ from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor
 from decimal import Decimal
 from django.db.models import Count
 from datetime import date
+from django.contrib.auth.models import User
+from django.core.validators import MinLengthValidator
+
+
+
+class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text='Required. Must be at least 5 characters long.',
+        validators=[MinLengthValidator(5)]
+    )
+    password2 = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text='Required. Must match the password field.'
+    )
+    number = serializers.CharField(
+        required=False,
+        max_length=20,
+        help_text='Optional. Phone number for contact purposes.'
+    )
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'role', 'secondary_role', 'first_name', 'last_name')
+        read_only_fields = ('role', 'secondary_role')  # Only admins can change roles
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('password2')
+        number = validated_data.pop('number', None)
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            password=validated_data['password']
+        )
+        if number:
+            user.number = number
+            user.save()
+        return user
+
+
+
+
 
 class MedicineSerializer(serializers.ModelSerializer):
     class Meta:

@@ -18,6 +18,33 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from drf_spectacular.types import OpenApiTypes
 from decimal import Decimal
 from .filters import RecordFilter
+from rest_framework.decorators import api_view
+
+
+@api_view()
+def health(request):
+    user = request.user
+    if user.has_role('doctor'):
+        return Response({'health': 'ok', 'role': user.list_roles()})
+
+    elif user.has_role('pharmacist'):
+        return Response({'health': 'ok', 'role': user.list_roles()})   
+
+    elif user.has_role('reception'):
+        return Response({'health': 'ok', 'role': user.list_roles()})  
+        
+    elif user.has_role('admin'):
+        return Response({'health': 'ok', 'role': user.list_roles()})   
+
+    else:
+        return Response({'health': 'ok'})              
+
+
+
+
+
+
+
 
 class MedicineReportFilter(django_filters.FilterSet):
     from_date = django_filters.DateFilter(field_name='record__issued_date', lookup_expr='gte')
@@ -45,7 +72,7 @@ class MedicineReportFilter(django_filters.FilterSet):
     ),
 )
 class PatientViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
 
@@ -107,7 +134,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     ),
 )
 class MedicineViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
     queryset = Medicine.objects.all()
     serializer_class = MedicineSerializer
     filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters
@@ -126,7 +153,7 @@ class MedicineViewSet(viewsets.ModelViewSet):
     )
 )
 class RecordViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
     queryset = Record.objects.all()
     serializer_class = RecordSerializer
     filter_backends = [DjangoFilterBackend]
@@ -160,7 +187,7 @@ class RecordViewSet(viewsets.ModelViewSet):
         return Response({'total_price': total})
 
 class PrescribedMedicineViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
     queryset = PrescribedMedicine.objects.all()
     serializer_class = PrescribedMedicineSerializer
     filter_backends = [DjangoFilterBackend]
@@ -204,7 +231,7 @@ class PrescribedMedicineViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 class DoctorViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     filter_backends = [filters.SearchFilter]  # This is from rest_framework.filters

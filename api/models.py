@@ -2,6 +2,63 @@ from django.db import models
 from decimal import Decimal
 from django.db.models import Sum, F
 
+from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.db import models
+
+class CustomUser(AbstractUser):
+    ROLE_CHOICES = [
+        ('reception', 'Reception'),
+        ('doctor', 'Doctor'),
+        ('pharmacist', 'Pharmacist'),
+        ('admin', 'Admin'),
+    ]
+    
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='reception'
+    )
+
+    # Optional secondary role
+    secondary_role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        null=True,
+        blank=True
+    )
+
+    # 🛠️ Fix group conflicts by overriding the fields with custom related_name
+    groups = models.ManyToManyField(
+        Group,
+        related_name='custom_user_set',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        verbose_name='groups'
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='custom_user_set',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions'
+    )
+
+    def has_role(self, role_name):
+        return role_name in [self.role, self.secondary_role]
+
+    def list_roles(self):
+        return {
+            'role': str(self.role),
+            'secondary_role': str(self.secondary_role) if self.secondary_role else None
+        }
+ 
+
+    class Meta:
+        app_label= 'api'
+        swappable = 'AUTH_USER_MODEL'        
+
+
 class Patient(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -99,3 +156,6 @@ class PrescribedMedicine(models.Model):
         ).aggregate(
             total_price=Sum('total')
         )['total_price'] or Decimal('0.00')
+
+
+

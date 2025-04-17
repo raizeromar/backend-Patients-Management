@@ -1,0 +1,73 @@
+ValueError: The field admin.LogEntry.user was declared with a lazy reference to 'api.customuser', but app 'api' doesn't provide model 'customuser'.
+
+models.py:
+class CustomUser(AbstractUser):
+    ROLE_CHOICES = [
+        ('reception', 'Reception'),
+        ('doctor', 'Doctor'),
+        ('pharmacist', 'Pharmacist'),
+        ('admin', 'Admin'),
+    ]
+    
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='reception'
+    )
+
+    # Optional secondary role
+    secondary_role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        null=True,
+        blank=True
+    )
+
+    # 🛠 Fix group conflicts by overriding the fields with custom related_name
+    groups = models.ManyToManyField(
+        Group,
+        related_name='custom_user_set',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        verbose_name='groups'
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='custom_user_set',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions'
+    )
+
+    def has_role(self, role_name):
+        return role_name in [self.role, self.secondary_role]
+
+    class Meta:
+        swappable = 'AUTH_USER_MODEL'
+
+
+
+
+admin.py:
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
+from .models import CustomUser
+
+@admin.register(CustomUser)
+class UserAdmin(BaseUserAdmin):
+    # Add custom fields to the admin form
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Custom Roles', {
+            'fields': ('role', 'secondary_role'),
+        }),
+    )
+
+    # Also show roles in the user list
+    list_display = BaseUserAdmin.list_display + ('role', 'secondary_role')
+
+    # Allow these fields to be edited in the "add user" form
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Custom Roles', {
+            'fields': ('role', 'secondary_role'),
+        }),
+    )
