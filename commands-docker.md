@@ -15,3 +15,8 @@ docker-compose exec web python manage.py makemigrations
 
 # Apply migrations
 docker-compose exec web python manage.py migrate
+
+# create superuser
+docker-compose exec web python manage.py createsuperuser
+
+curl http://127.0.0.1:10000/api/health/  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ0ODg5MjY0LCJpYXQiOjE3NDQ4ODU2NjQsImp0aSI6IjNmNGM2ZjcyN2E0MDRlMWVhZTExOWRjZmI3MjAyODRjIiwidXNlcl9pZCI6MX0.paspXmUcwzyIPm-3B8RE49236NTC8L-VXJuJpRO3UJU"

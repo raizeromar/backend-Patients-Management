@@ -1,5 +1,31 @@
 from django.contrib import admin
 from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
+from .models import CustomUser
+
+
+@admin.register(CustomUser)
+class UserAdmin(BaseUserAdmin):
+    # Add custom fields to the admin form
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Custom Roles', {
+            'fields': ('role', 'secondary_role'),
+        }),
+    )
+
+    # Also show roles in the user list
+    list_display = BaseUserAdmin.list_display + ('role', 'secondary_role')
+
+    # Allow these fields to be edited in the "add user" form
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Custom Roles', {
+            'fields': ('role', 'secondary_role'),
+        }),
+    )
+
+
+
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):

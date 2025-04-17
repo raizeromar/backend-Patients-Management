@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, filters, status
 from django_filters.rest_framework import DjangoFilterBackend
@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 from django.db.models import Sum, F
 from django.utils import timezone
 from rest_framework import serializers
+
+User = get_user_model()
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

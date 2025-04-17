@@ -2,6 +2,58 @@ from django.db import models
 from decimal import Decimal
 from django.db.models import Sum, F
 from django.core.validators import MinValueValidator
+from django.contrib.auth.models import AbstractUser, Group, Permission
+
+
+class CustomUser(AbstractUser):
+    ROLE_CHOICES = [
+        ('reception', 'Reception'),
+        ('doctor', 'Doctor'),
+        ('pharmacist', 'Pharmacist'),
+        ('admin', 'Admin'),
+    ]
+    
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='reception'
+    )
+
+    # Optional secondary role
+    secondary_role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        null=True,
+        blank=True
+    )
+
+    # 🛠️ Fix group conflicts by overriding the fields with custom related_name
+    groups = models.ManyToManyField(
+        Group,
+        related_name='custom_user_set',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        verbose_name='groups'
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='custom_user_set',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions'
+    )
+
+    def has_role(self, role_name):
+        return role_name in [self.role, self.secondary_role]
+
+    def list_roles(self):
+        return {
+            'role': str(self.role),
+            'secondary_role': str(self.secondary_role) if self.secondary_role else None
+        }
+
+
+
 
 class Patient(models.Model):
     STATUS_CHOICES = [
@@ -140,3 +192,5 @@ class GivedMedicine(models.Model):
 
     class Meta:
         ordering = ['-given_at']
+
+

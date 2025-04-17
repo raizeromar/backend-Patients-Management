@@ -30,8 +30,12 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'api',
-    
 ]
+
+
+AUTH_USER_MODEL = 'api.customuser'
+
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

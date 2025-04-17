@@ -1,7 +1,11 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from django.contrib.auth.models import User
 from django.core.validators import MinLengthValidator
+from datetime import datetime
+from drf_spectacular.utils import extend_schema_field
 from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine
+
+User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -22,10 +26,12 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=20,
         help_text='Optional. Phone number for contact purposes.'
     )
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, default='reception')
+    secondary_role = serializers.ChoiceField(choices=User.ROLE_CHOICES, required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'password2', 'number')
+        fields = ('username', 'password', 'password2', 'number', 'role', 'secondary_role')
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -114,10 +120,12 @@ class PatientSerializer(serializers.ModelSerializer):
             'status', 'is_waiting', 'records_count', 'last_visit'
         ]
     
-    def get_records_count(self, obj):
+    @extend_schema_field(int)
+    def get_records_count(self, obj) -> int:
         return obj.records.count()
     
-    def get_last_visit(self, obj):
+    @extend_schema_field(serializers.DateTimeField)
+    def get_last_visit(self, obj) -> datetime:
         last_record = obj.records.order_by('-issued_date').first()
         return last_record.issued_date if last_record else None
 
