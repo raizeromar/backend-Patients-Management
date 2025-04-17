@@ -3,52 +3,96 @@ from rest_framework import serializers
 from django.core.validators import MinLengthValidator
 from datetime import datetime
 from drf_spectacular.utils import extend_schema_field
-from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine
+from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine, CustomUser
 
 User = get_user_model()
 
-class UserSerializer(serializers.ModelSerializer):
+class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         required=True,
         style={'input_type': 'password'},
-        help_text='Required. Must be at least 5 characters long.',
-        validators=[MinLengthValidator(5)]
+        min_length=5,
+        help_text='Required. Must be at least 5 characters long.'
     )
-    password2 = serializers.CharField(
-        write_only=True,
-        required=True,
-        style={'input_type': 'password'},
-        help_text='Required. Must match the password field.'
+    role = serializers.ChoiceField(
+        choices=CustomUser.ROLE_CHOICES,
+        required=True
     )
-    number = serializers.CharField(
+    secondary_role = serializers.ChoiceField(
+        choices=CustomUser.ROLE_CHOICES,
         required=False,
-        max_length=20,
-        help_text='Optional. Phone number for contact purposes.'
+        allow_null=True
     )
-    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, default='reception')
-    secondary_role = serializers.ChoiceField(choices=User.ROLE_CHOICES, required=False, allow_null=True)
 
     class Meta:
-        model = User
-        fields = ('username', 'password', 'password2', 'number', 'role', 'secondary_role')
+        model = CustomUser
+        fields = ['username', 'password', 'role', 'secondary_role']
 
     def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        # Validate that role and secondary_role are different if both provided
+        role = attrs.get('role')
+        secondary_role = attrs.get('secondary_role')
+        if secondary_role and role == secondary_role:
+            raise serializers.ValidationError({
+                "secondary_role": "Secondary role must be different from primary role"
+            })
         return attrs
 
     def create(self, validated_data):
-        validated_data.pop('password2')
-        number = validated_data.pop('number', None)
-        user = User.objects.create_user(
+        # Create user with hashed password
+        user = CustomUser.objects.create_user(
             username=validated_data['username'],
-            password=validated_data['password']
+            password=validated_data['password'],
+            role=validated_data['role'],
+            secondary_role=validated_data.get('secondary_role')
         )
-        if number:
-            user.number = number
-            user.save()
         return user
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        required=False,  # Not required for updates
+        style={'input_type': 'password'},
+        min_length=5,
+        help_text='Must be at least 5 characters long.'
+    )
+    role = serializers.ChoiceField(
+        choices=CustomUser.ROLE_CHOICES,
+        required=True
+    )
+    secondary_role = serializers.ChoiceField(
+        choices=CustomUser.ROLE_CHOICES,
+        required=False,
+        allow_null=True
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = ['username', 'password', 'role', 'secondary_role']
+
+    def validate(self, attrs):
+        # Validate that role and secondary_role are different if both provided
+        role = attrs.get('role')
+        secondary_role = attrs.get('secondary_role')
+        if secondary_role and role == secondary_role:
+            raise serializers.ValidationError({
+                "secondary_role": "Secondary role must be different from primary role"
+            })
+        return attrs
+
+    def update(self, instance, validated_data):
+        # Handle password update separately
+        password = validated_data.pop('password', None)
+        if password:
+            instance.set_password(password)
+        
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
 class PastIllnessSerializer(serializers.ModelSerializer):
     class Meta:
@@ -143,3 +187,16 @@ class PatientDetailSerializer(PatientSerializer):
     
     def get_total_medicine_price(self, obj):
         return obj.total_medicine_price_per_patient()
+
+class CustomUserListSerializer(serializers.ModelSerializer):
+    roles = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'roles']
+
+    def get_roles(self, obj):
+        return {
+            'primary_role': obj.role,
+            'secondary_role': obj.secondary_role
+        }

@@ -3,15 +3,17 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, filters, status
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine
+from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine, CustomUser
 from .serializers import (
-    UserSerializer,
+    UserCreateSerializer,
+    UserUpdateSerializer,
     PatientSerializer, PatientDetailSerializer,
     MedicineSerializer, RecordSerializer,
     PrescribedMedicineSerializer, DoctorSerializer,
-    PastIllnessSerializer, GivedMedicineSerializer
+    PastIllnessSerializer, GivedMedicineSerializer,
+    CustomUserListSerializer
 )
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse, OpenApiParameter, inline_serializer
 from drf_spectacular.types import OpenApiTypes
@@ -26,57 +28,6 @@ User = get_user_model()
 @permission_classes([AllowAny])
 def health_check(request):
     return Response({'status': 'healthy'}, status=status.HTTP_200_OK)
-
-@extend_schema(
-    tags=['authentication'],
-    operation_id='register_user',
-    description='Register a new user account',
-    request=UserSerializer,
-    responses={
-        201: OpenApiResponse(
-            response=OpenApiExample(
-                'Success Response',
-                value={'message': 'User created successfully'},
-                status_codes=['201']
-            ),
-            description='User successfully created'
-        ),
-        400: OpenApiResponse(
-            response=OpenApiExample(
-                'Error Response',
-                value={
-                    'password': ['Password fields didn\'t match.'],
-                    'username': ['This field is required.']
-                },
-                status_codes=['400']
-            ),
-            description='Invalid input'
-        )
-    },
-    examples=[
-        OpenApiExample(
-            'Valid Request',
-            value={
-                'username': 'john_doe',
-                'password': 'secure123',
-                'password2': 'secure123',
-                'number': 'Optional 1234567890'
-            },
-            request_only=True,
-        )
-    ]
-)
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def register_user(request):
-    serializer = UserSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(
-            {'message': 'User created successfully'},
-            status=status.HTTP_201_CREATED
-        )
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
@@ -336,3 +287,106 @@ def medicines_report(request):
     }
 
     return Response(response_data)
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for viewing and editing user information.
+    """
+    queryset = CustomUser.objects.all()
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username', 'email', 'role', 'secondary_role']
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return UserUpdateSerializer
+        return CustomUserListSerializer
+
+    @extend_schema(
+        summary="Update a user",
+        description="Fully update a user's information. All fields except password are required.",
+        request=UserUpdateSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=CustomUserListSerializer,
+                description="User updated successfully"
+            ),
+            400: OpenApiResponse(
+                description="Invalid data provided",
+                examples=[
+                    OpenApiExample(
+                        'Validation Error',
+                        value={
+                            "secondary_role": ["Secondary role must be different from primary role"],
+                            "password": ["Ensure this field has at least 5 characters."]
+                        }
+                    )
+                ]
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Valid Request',
+                value={
+                    "username": "updateduser",
+                    "password": "newpass123",
+                    "role": "doctor",
+                    "secondary_role": "reception"
+                },
+                request_only=True
+            )
+        ]
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Partially update a user",
+        description="Update specific fields of a user. Only provide the fields that need to be updated.",
+        request=UserUpdateSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=CustomUserListSerializer,
+                description="User partially updated successfully"
+            ),
+            400: OpenApiResponse(
+                description="Invalid data provided",
+                examples=[
+                    OpenApiExample(
+                        'Validation Error',
+                        value={
+                            "secondary_role": ["Secondary role must be different from primary role"],
+                            "password": ["Ensure this field has at least 5 characters."]
+                        }
+                    )
+                ]
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Update Role Only',
+                value={
+                    "role": "pharmacist",
+                    "secondary_role": 'null'
+                },
+                request_only=True
+            ),
+            OpenApiExample(
+                'Update Password Only',
+                value={
+                    "password": "newpassword123"
+                },
+                request_only=True
+            )
+        ]
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = CustomUser.objects.all()
+        role = self.request.query_params.get('role', None)
+        if role:
+            queryset = queryset.filter(role=role)
+        return queryset
