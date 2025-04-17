@@ -78,7 +78,70 @@ class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name', 'specialization']
+    search_fields = ['name', 'specialization', 'mobile_number', 'user__username']
+
+    @extend_schema(
+        summary="Create a new doctor",
+        description="Create a new doctor with required user account link. The linked user must have a 'doctor' role.",
+        request=DoctorSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=DoctorSerializer,
+                description="Doctor created successfully"
+            ),
+            400: OpenApiResponse(
+                description="Invalid data provided",
+                examples=[
+                    OpenApiExample(
+                        'Validation Error',
+                        value={
+                            "mobile_number": ["This field is required."],
+                            "user": ["This field is required.", "The user must have a 'doctor' role"]
+                        }
+                    )
+                ]
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Valid Request',
+                value={
+                    "name": "Dr. John Doe",
+                    "specialization": "Cardiology",
+                    "mobile_number": "+1234567890",
+                    "user": 1  # Required user ID with doctor role
+                },
+                request_only=True
+            )
+        ]
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Update a doctor",
+        description="Update doctor's information. The user link cannot be changed once created.",
+        request=DoctorSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=DoctorSerializer,
+                description="Doctor updated successfully"
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Update Example',
+                value={
+                    "name": "Dr. John Doe",
+                    "specialization": "Cardiology",
+                    "mobile_number": "+1234567890"
+                },
+                request_only=True
+            )
+        ]
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
 
 class RecordViewSet(viewsets.ModelViewSet):
     queryset = Record.objects.all()

@@ -105,9 +105,21 @@ class MedicineSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'dose', 'scientific_name', 'company', 'price']
 
 class DoctorSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+
     class Meta:
         model = Doctor
-        fields = ['id', 'name', 'specialization', 'created_at']
+        fields = ['id', 'user', 'user_id', 'username', 'name', 'specialization', 'mobile_number', 'created_at']
+        extra_kwargs = {
+            'user': {'required': True, 'write_only': True},  # Make user field required
+            'created_at': {'read_only': True}
+        }
+
+    def validate_user(self, value):
+        if value.role != 'doctor':
+            raise serializers.ValidationError("The user must have a 'doctor' role")
+        return value
 
 class PrescribedMedicineSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source='medicine.name', read_only=True)
