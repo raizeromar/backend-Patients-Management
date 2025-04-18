@@ -171,10 +171,63 @@ class PrescribedMedicineSerializer(serializers.ModelSerializer):
 class GivedMedicineSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source='prescribed_medicine.medicine.name', read_only=True)
     total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    # Add new write-only fields for direct medicine creation
+    medicine = serializers.IntegerField(write_only=True, required=False)
+    dosage = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = GivedMedicine
-        fields = ['id', 'prescribed_medicine', 'quantity', 'given_at', 'medicine_name', 'total_price']
+        fields = ['id', 'patient', 'prescribed_medicine', 'quantity', 'given_at', 
+                 'medicine_name', 'total_price', 'medicine', 'dosage']
+        extra_kwargs = {
+            'prescribed_medicine': {'required': False}
+        }
+
+    def validate(self, data):
+        # Check if either prescribed_medicine or (medicine and dosage) is provided
+        if 'prescribed_medicine' not in data and ('medicine' not in data or 'dosage' not in data):
+            raise serializers.ValidationError(
+                "Either 'prescribed_medicine' or both 'medicine' and 'dosage' must be provided"
+            )
+        return data
+
+    def create(self, validated_data):
+        medicine_id = validated_data.pop('medicine', None)
+        dosage = validated_data.pop('dosage', None)
+
+        if medicine_id and dosage and 'prescribed_medicine' not in validated_data:
+            try:
+                patient = validated_data['patient']
+                medicine = Medicine.objects.get(id=medicine_id)
+                
+                # Get or create default record
+                default_record = Record.objects.filter(
+                    patient=patient,
+                    is_default=True
+                ).first()
+                
+                if not default_record:
+                    default_record = Record.create_default_record(patient)
+                    if not default_record:
+                        raise serializers.ValidationError(
+                            {'error': 'Could not create default record. No default doctor available.'}
+                        )
+
+                # Create prescribed medicine
+                prescribed_medicine = PrescribedMedicine.objects.create(
+                    record=default_record,
+                    medicine=medicine,
+                    dosage=dosage
+                )
+                
+                validated_data['prescribed_medicine'] = prescribed_medicine
+                
+            except Medicine.DoesNotExist:
+                raise serializers.ValidationError({'error': 'Medicine not found'})
+            except Patient.DoesNotExist:
+                raise serializers.ValidationError({'error': 'Patient not found'})
+
+        return super().create(validated_data)
 
 class RecordSerializer(serializers.ModelSerializer):
     prescribed_medicines = PrescribedMedicineSerializer(many=True, read_only=True)

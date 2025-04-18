@@ -161,6 +161,52 @@ class GivedMedicineViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['patient', 'prescribed_medicine']
 
+    @extend_schema(
+        summary="Create a given medicine record",
+        description="""
+        Create a new given medicine record in two ways:
+        
+        1. Using an existing prescribed medicine:
+           - Provide patient, prescribed_medicine, and quantity
+        
+        2. Creating a new prescribed medicine on the fly:
+           - Provide patient, medicine, dosage, and quantity
+        """,
+        request=GivedMedicineSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=GivedMedicineSerializer,
+                description="Given medicine created successfully"
+            ),
+            400: OpenApiResponse(
+                description="Invalid data provided"
+            )
+        },
+        examples=[
+            OpenApiExample(
+                'Using Existing Prescription',
+                value={
+                    "patient": 1,
+                    "prescribed_medicine": 1,
+                    "quantity": 2
+                },
+                request_only=True
+            ),
+            OpenApiExample(
+                'Creating New Prescription',
+                value={
+                    "patient": 1,
+                    "medicine": 1,
+                    "dosage": "1 tablet twice daily",
+                    "quantity": 2
+                },
+                request_only=True
+            )
+        ]
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
 class PastIllnessViewSet(viewsets.ModelViewSet):
     queryset = Past_Illness.objects.all()
     serializer_class = PastIllnessSerializer
