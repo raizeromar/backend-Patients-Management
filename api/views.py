@@ -150,30 +150,10 @@ class RecordViewSet(viewsets.ModelViewSet):
     search_fields = ['patient__full_name', 'doctor__name', 'doctor__specialization']
 
 class PrescribedMedicineViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing prescribed medicines.
-    """
     queryset = PrescribedMedicine.objects.all()
     serializer_class = PrescribedMedicineSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['record', 'medicine']
-
-    @extend_schema(
-        description='Create a new prescribed medicine',
-        examples=[
-            OpenApiExample(
-                'Example Request',
-                value={
-                    'record': 1,
-                    'medicine': 1,
-                    'dosage': '1 tablet twice daily'
-                },
-                request_only=True,
-            )
-        ]
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
 
 class GivedMedicineViewSet(viewsets.ModelViewSet):
     queryset = GivedMedicine.objects.all()

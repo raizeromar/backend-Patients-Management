@@ -124,17 +124,49 @@ class DoctorSerializer(serializers.ModelSerializer):
 class PrescribedMedicineSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source='medicine.name', read_only=True)
     medicine_price = serializers.DecimalField(source='medicine.price', max_digits=10, decimal_places=2, read_only=True)
+    patient = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = PrescribedMedicine
-        fields = ['id', 'record', 'medicine', 'medicine_name', 'medicine_price', 'dosage']
-        swagger_schema_fields = {
-            'example': {
-                'record': 1,
-                'medicine': 1,
-                'dosage': '1 tablet twice daily'
-            }
+        fields = ['id', 'record', 'medicine', 'medicine_name', 'medicine_price', 'dosage', 'patient']
+        extra_kwargs = {
+            'record': {'required': False}
         }
+
+    def validate(self, data):
+        if 'record' not in data and 'patient' not in data:
+            raise serializers.ValidationError(
+                "Either 'record' or 'patient' must be provided"
+            )
+        return data
+
+    def create(self, validated_data):
+        patient_id = validated_data.pop('patient', None)
+        
+        if patient_id and 'record' not in validated_data:
+            try:
+                patient = Patient.objects.get(id=patient_id)
+                default_record = Record.objects.filter(
+                    patient=patient,
+                    is_default=True
+                ).first()
+                
+                if not default_record:
+                    # Create a default record if none exists
+                    default_record = Record.create_default_record(patient)
+                    if not default_record:
+                        raise serializers.ValidationError(
+                            {'error': 'Could not create default record. No default doctor available.'}
+                        )
+                
+                validated_data['record'] = default_record
+                
+            except Patient.DoesNotExist:
+                raise serializers.ValidationError(
+                    {'error': 'Patient not found'}
+                )
+        
+        return super().create(validated_data)
 
 class GivedMedicineSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source='prescribed_medicine.medicine.name', read_only=True)

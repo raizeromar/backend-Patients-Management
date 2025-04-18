@@ -87,6 +87,13 @@ class Patient(models.Model):
             total_price=Sum('total')
         )['total_price'] or Decimal('0.00')
     
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding  # Check if this is a new patient
+        super().save(*args, **kwargs)
+        
+        if is_new:
+            Record.create_default_record(self)
+    
     def __str__(self):
         return self.full_name
 
@@ -141,9 +148,26 @@ class Record(models.Model):
     vital_signs = models.TextField(blank=True)
     issued_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
+    is_default = models.BooleanField(default=False)  # Add this field
     
     def __str__(self):
         return f"Record for {self.patient.full_name} - {self.issued_date}"
+
+    @classmethod
+    def create_default_record(cls, patient):
+        """Create a default record for a new patient"""
+        from datetime import date
+        # Get the first doctor in the system (you might want to modify this logic)
+        default_doctor = Doctor.objects.first()
+        if default_doctor:
+            return cls.objects.create(
+                patient=patient,
+                doctor=default_doctor,
+                issued_date=date.today(),
+                is_default=True,
+                vital_signs="Initial record"
+            )
+        return None
     
     @property
     def total_prescribed_medicines(self):  # Renamed from total_given_medicines
