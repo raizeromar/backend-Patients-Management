@@ -32,6 +32,12 @@ User = get_user_model()
 def health_check(request):
     return Response({'status': 'healthy'}, status=status.HTTP_200_OK)
 
+class ResultsListMixin:
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"results": serializer.data})
+
 class BaseViewSet(viewsets.ModelViewSet):
     """
     Base ViewSet that implements standard success messages for create, update and delete operations
@@ -93,7 +99,7 @@ class BaseViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-class PatientViewSet(BaseViewSet):
+class PatientViewSet(ResultsListMixin, BaseViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     model_name = "Patient"
@@ -133,14 +139,14 @@ class PatientViewSet(BaseViewSet):
         serializer = RecordSerializer(records, many=True)
         return Response(serializer.data)
 
-class MedicineViewSet(BaseViewSet):
+class MedicineViewSet(ResultsListMixin, BaseViewSet):
     queryset = Medicine.objects.all()
     serializer_class = MedicineSerializer
     model_name = "Medicine"
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'scientific_name', 'company']
 
-class DoctorViewSet(BaseViewSet):
+class DoctorViewSet(ResultsListMixin, BaseViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     model_name = "Doctor"
@@ -210,14 +216,14 @@ class DoctorViewSet(BaseViewSet):
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-class RecordViewSet(BaseViewSet):
+class RecordViewSet(ResultsListMixin, BaseViewSet):
     queryset = Record.objects.all()
     serializer_class = RecordSerializer
     model_name = "Record"
     filter_backends = [filters.SearchFilter]
     search_fields = ['patient__full_name', 'doctor__name', 'doctor__specialization']
 
-class PrescribedMedicineViewSet(BaseViewSet):
+class PrescribedMedicineViewSet(ResultsListMixin, BaseViewSet):
     queryset = PrescribedMedicine.objects.all()
     serializer_class = PrescribedMedicineSerializer
     model_name = "Prescribed medicine"
@@ -233,7 +239,7 @@ class PrescribedMedicineViewSet(BaseViewSet):
             queryset = queryset.filter(medicine=medicine)
         return queryset
 
-class GivedMedicineViewSet(BaseViewSet):
+class GivedMedicineViewSet(ResultsListMixin, BaseViewSet):
     queryset = GivedMedicine.objects.all()
     serializer_class = GivedMedicineSerializer
     model_name = "Given medicine"
@@ -463,7 +469,7 @@ def medicines_report(request):
 
     return Response(response_data)
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(ResultsListMixin, viewsets.ModelViewSet):
     """
     ViewSet for viewing and editing user information.
     """
