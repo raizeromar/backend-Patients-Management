@@ -1,5 +1,5 @@
 from django.db import models
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.db.models import Sum, F
 from django.core.validators import MinValueValidator
 from django.contrib.auth.models import AbstractUser, Group, Permission
@@ -194,6 +194,12 @@ class PrescribedMedicine(models.Model):
     def __str__(self):
         return f"{self.medicine.name} - {self.dosage}"
 
+    class Meta:
+        ordering = ['-id']  # Order by id descending (newest first)
+        # Alternative ordering options:
+        # ordering = ['medicine__name']  # Order by medicine name
+        # ordering = ['-record__issued_date', 'medicine__name']  # Order by record date and medicine name
+
 class GivedMedicine(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='given_medicines')
     prescribed_medicine = models.ForeignKey(PrescribedMedicine, on_delete=models.CASCADE)
@@ -202,7 +208,20 @@ class GivedMedicine(models.Model):
 
     def total_price(self):
         """Calculate total price for this given medicine"""
-        return self.prescribed_medicine.medicine.price * self.quantity
+        try:
+            if not self.prescribed_medicine or not self.prescribed_medicine.medicine:
+                return Decimal('0.00')
+                
+            price = self.prescribed_medicine.medicine.price
+            if not isinstance(price, Decimal):
+                price = Decimal(str(price))
+            
+            quantity = Decimal(str(self.quantity))
+            
+            total = price * quantity
+            return total.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+        except (TypeError, ValueError, InvalidOperation, AttributeError):
+            return Decimal('0.00')
     
     def __str__(self):
         return f"{self.prescribed_medicine.medicine.name} - {self.quantity}"
@@ -210,11 +229,19 @@ class GivedMedicine(models.Model):
     @classmethod
     def get_total_price_all_patients(cls):
         """Calculate total medicine price across all patients"""
-        return cls.objects.annotate(
-            total=F('prescribed_medicine__medicine__price') * F('quantity')
-        ).aggregate(
-            total_price=Sum('total')
-        )['total_price'] or Decimal('0.00')
+        try:
+            total = cls.objects.annotate(
+                total=F('prescribed_medicine__medicine__price') * F('quantity')
+            ).aggregate(
+                total_price=Sum('total')
+            )['total_price'] or Decimal('0.00')
+            
+            if not isinstance(total, Decimal):
+                total = Decimal(str(total))
+                
+            return total.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+        except (TypeError, ValueError, InvalidOperation):
+            return Decimal('0.00')
 
     class Meta:
         ordering = ['-given_at']

@@ -4,6 +4,7 @@ from django.core.validators import MinLengthValidator
 from datetime import datetime
 from drf_spectacular.utils import extend_schema_field
 from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine, CustomUser
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 User = get_user_model()
 
@@ -171,14 +172,15 @@ class PrescribedMedicineSerializer(serializers.ModelSerializer):
 class GivedMedicineSerializer(serializers.ModelSerializer):
     medicine_name = serializers.CharField(source='prescribed_medicine.medicine.name', read_only=True)
     total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    # Add new write-only fields for direct medicine creation
+    medicine_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     medicine = serializers.IntegerField(write_only=True, required=False)
     dosage = serializers.CharField(write_only=True, required=False)
+    quantity = serializers.IntegerField(min_value=1)
 
     class Meta:
         model = GivedMedicine
         fields = ['id', 'patient', 'prescribed_medicine', 'quantity', 'given_at', 
-                 'medicine_name', 'total_price', 'medicine', 'dosage']
+                 'medicine_name', 'total_price', 'medicine_price', 'medicine', 'dosage']
         extra_kwargs = {
             'prescribed_medicine': {'required': False}
         }
@@ -228,6 +230,42 @@ class GivedMedicineSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'error': 'Patient not found'})
 
         return super().create(validated_data)
+
+    def to_representation(self, instance):
+        try:
+            data = super().to_representation(instance)
+            
+            # Safely handle medicine price
+            try:
+                medicine_price = instance.prescribed_medicine.medicine.price
+                if not isinstance(medicine_price, Decimal):
+                    medicine_price = Decimal(str(medicine_price))
+                data['medicine_price'] = str(medicine_price.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+            except (AttributeError, TypeError, InvalidOperation):
+                data['medicine_price'] = "0.00"
+
+            # Safely handle total price
+            try:
+                total = instance.total_price()
+                if not isinstance(total, Decimal):
+                    total = Decimal(str(total))
+                data['total_price'] = str(total.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
+            except (AttributeError, TypeError, InvalidOperation):
+                data['total_price'] = "0.00"
+
+            return data
+        except Exception as e:
+            # Fallback with safe default values
+            return {
+                'id': instance.id,
+                'patient': instance.patient_id,
+                'prescribed_medicine': instance.prescribed_medicine_id,
+                'quantity': instance.quantity,
+                'given_at': instance.given_at,
+                'medicine_name': instance.prescribed_medicine.medicine.name if instance.prescribed_medicine else '',
+                'total_price': "0.00",
+                'medicine_price': "0.00"
+            }
 
 class RecordSerializer(serializers.ModelSerializer):
     prescribed_medicines = PrescribedMedicineSerializer(many=True, read_only=True)

@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from django.db.models import Sum, F
 from django.utils import timezone
 from rest_framework import serializers
+from django.http import Http404
 
 User = get_user_model()
 
@@ -29,9 +30,56 @@ User = get_user_model()
 def health_check(request):
     return Response({'status': 'healthy'}, status=status.HTTP_200_OK)
 
-class PatientViewSet(viewsets.ModelViewSet):
+class BaseViewSet(viewsets.ModelViewSet):
+    """
+    Base ViewSet that implements standard success messages for update and delete operations
+    """
+    
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(description="Resource updated successfully"),
+            404: OpenApiResponse(description="Resource not found")
+        }
+    )
+    def update(self, request, *args, **kwargs):
+        try:
+            response = super().update(request, *args, **kwargs)
+            if response.status_code == 200:
+                response.data = {
+                    "message": f"{self.model_name} updated successfully",
+                    "data": response.data
+                }
+            return response
+        except Http404:
+            return Response(
+                {"error": f"{self.model_name} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(description="Resource deleted successfully"),
+            404: OpenApiResponse(description="Resource not found")
+        }
+    )
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+            return Response(
+                {"message": f"{self.model_name} deleted successfully"},
+                status=status.HTTP_200_OK
+            )
+        except Http404:
+            return Response(
+                {"error": f"{self.model_name} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class PatientViewSet(BaseViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
+    model_name = "Patient"
     
     @action(detail=True, methods=['get'])
     def prescribed_medicines(self, request, pk=None):
@@ -68,15 +116,17 @@ class PatientViewSet(viewsets.ModelViewSet):
         serializer = RecordSerializer(records, many=True)
         return Response(serializer.data)
 
-class MedicineViewSet(viewsets.ModelViewSet):
+class MedicineViewSet(BaseViewSet):
     queryset = Medicine.objects.all()
     serializer_class = MedicineSerializer
+    model_name = "Medicine"
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'scientific_name', 'company']
 
-class DoctorViewSet(viewsets.ModelViewSet):
+class DoctorViewSet(BaseViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
+    model_name = "Doctor"
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'specialization', 'mobile_number', 'user__username']
 
@@ -143,23 +193,44 @@ class DoctorViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-class RecordViewSet(viewsets.ModelViewSet):
+class RecordViewSet(BaseViewSet):
     queryset = Record.objects.all()
     serializer_class = RecordSerializer
+    model_name = "Record"
     filter_backends = [filters.SearchFilter]
     search_fields = ['patient__full_name', 'doctor__name', 'doctor__specialization']
 
-class PrescribedMedicineViewSet(viewsets.ModelViewSet):
+class PrescribedMedicineViewSet(BaseViewSet):
     queryset = PrescribedMedicine.objects.all()
     serializer_class = PrescribedMedicineSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['record', 'medicine']
+    model_name = "Prescribed medicine"
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        record = self.request.query_params.get('record', None)
+        medicine = self.request.query_params.get('medicine', None)
+        
+        if record:
+            queryset = queryset.filter(record=record)
+        if medicine:
+            queryset = queryset.filter(medicine=medicine)
+        return queryset
 
-class GivedMedicineViewSet(viewsets.ModelViewSet):
+class GivedMedicineViewSet(BaseViewSet):
     queryset = GivedMedicine.objects.all()
     serializer_class = GivedMedicineSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['patient', 'prescribed_medicine']
+    model_name = "Given medicine"
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        patient = self.request.query_params.get('patient', None)
+        prescribed_medicine = self.request.query_params.get('prescribed_medicine', None)
+        
+        if patient:
+            queryset = queryset.filter(patient=patient)
+        if prescribed_medicine:
+            queryset = queryset.filter(prescribed_medicine=prescribed_medicine)
+        return queryset
 
     @extend_schema(
         summary="Create a given medicine record",
@@ -207,12 +278,20 @@ class GivedMedicineViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-class PastIllnessViewSet(viewsets.ModelViewSet):
+class PastIllnessViewSet(BaseViewSet):
     queryset = Past_Illness.objects.all()
     serializer_class = PastIllnessSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['patient']
+    model_name = "Past illness"
+    filter_backends = [filters.SearchFilter]
     search_fields = ['description']
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        patient = self.request.query_params.get('patient', None)
+        
+        if patient:
+            queryset = queryset.filter(patient=patient)
+        return queryset
 
 @extend_schema(
     tags=['reports'],
