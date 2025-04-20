@@ -119,8 +119,8 @@ X_FRAME_OPTIONS = 'DENY'
 
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = [
-    'https://apibankaldawaa.gatara.org',
-    'http://apibankaldawaa.gatara.org',
+    'https://backend-patients-management-production.up.railway.app/',
+    'http://backend-patients-management-production.up.railway.app/',
 ]
 
 # CORS settings
