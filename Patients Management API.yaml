@@ -1,0 +1,2377 @@
+openapi: 3.0.3
+info:
+  title: Patients Management API
+  version: 1.0.0
+  description: "\n    API for managing patients, medicines, and medical records.\n\
+    \        \n    Features:\n    - Patient management with medical history\n    -\
+    \ Medicine inventory and prescriptions\n    - Medical records with doctor assignments\n\
+    \    - Detailed reporting capabilities\n    "
+paths:
+  /api/doctors/:
+    get:
+      operationId: doctors_list
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - doctors
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDoctorList'
+          description: ''
+    post:
+      operationId: doctors_create
+      description: Create a new doctor with required user account link. The linked
+        user must have a 'doctor' role.
+      summary: Create a new doctor
+      tags:
+      - doctors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorRequest'
+            examples:
+              ValidRequest:
+                value:
+                  name: Dr. John Doe
+                  specialization: Cardiology
+                  mobile_number: '+1234567890'
+                  user: 1
+                summary: Valid Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DoctorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DoctorRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Doctor'
+          description: Doctor created successfully
+        '400':
+          description: Invalid data provided
+  /api/doctors/{id}/:
+    get:
+      operationId: doctors_retrieve
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doctor.
+        required: true
+      tags:
+      - doctors
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Doctor'
+          description: ''
+    put:
+      operationId: doctors_update
+      description: Update doctor's information. The user link cannot be changed once
+        created.
+      summary: Update a doctor
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doctor.
+        required: true
+      tags:
+      - doctors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorRequest'
+            examples:
+              UpdateExample:
+                value:
+                  name: Dr. John Doe
+                  specialization: Cardiology
+                  mobile_number: '+1234567890'
+                summary: Update Example
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DoctorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DoctorRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Doctor'
+          description: Doctor updated successfully
+    patch:
+      operationId: doctors_partial_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doctor.
+        required: true
+      tags:
+      - doctors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDoctorRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDoctorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDoctorRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Doctor'
+          description: ''
+    delete:
+      operationId: doctors_destroy
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doctor.
+        required: true
+      tags:
+      - doctors
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource deleted successfully
+        '404':
+          description: Resource not found
+  /api/given-medicines/:
+    get:
+      operationId: given_medicines_list
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - given-medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGivedMedicineList'
+          description: ''
+    post:
+      operationId: given_medicines_create
+      description: "\n        Create a new given medicine record in two ways:\n  \
+        \      \n        1. Using an existing prescribed medicine:\n           - Provide\
+        \ patient, prescribed_medicine, and quantity\n        \n        2. Creating\
+        \ a new prescribed medicine on the fly:\n           - Provide patient, medicine,\
+        \ dosage, and quantity\n        "
+      summary: Create a given medicine record
+      tags:
+      - given-medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GivedMedicineRequest'
+            examples:
+              UsingExistingPrescription:
+                value:
+                  patient: 1
+                  prescribed_medicine: 1
+                  quantity: 2
+                summary: Using Existing Prescription
+              CreatingNewPrescription:
+                value:
+                  patient: 1
+                  medicine: 1
+                  dosage: 1 tablet twice daily
+                  quantity: 2
+                summary: Creating New Prescription
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GivedMedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GivedMedicineRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GivedMedicine'
+          description: Given medicine created successfully
+        '400':
+          description: Invalid data provided
+  /api/given-medicines/{id}/:
+    get:
+      operationId: given_medicines_retrieve
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gived medicine.
+        required: true
+      tags:
+      - given-medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GivedMedicine'
+          description: ''
+    put:
+      operationId: given_medicines_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gived medicine.
+        required: true
+      tags:
+      - given-medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GivedMedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GivedMedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GivedMedicineRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource updated successfully
+        '404':
+          description: Resource not found
+    patch:
+      operationId: given_medicines_partial_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gived medicine.
+        required: true
+      tags:
+      - given-medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGivedMedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGivedMedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGivedMedicineRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GivedMedicine'
+          description: ''
+    delete:
+      operationId: given_medicines_destroy
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this gived medicine.
+        required: true
+      tags:
+      - given-medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource deleted successfully
+        '404':
+          description: Resource not found
+  /api/medicine-report/:
+    get:
+      operationId: medicine_report_retrieve
+      description: Get a report of all medicines given to patients with total quantities
+        and prices
+      summary: Medicine Usage Report
+      parameters:
+      - in: query
+        name: area
+        schema:
+          type: string
+        description: Filter by patient area
+      - in: query
+        name: from_date
+        schema:
+          type: string
+          format: date
+        description: Start date for the report (YYYY-MM-DD)
+      - in: query
+        name: period
+        schema:
+          type: string
+          enum:
+          - month
+          - today
+        description: Predefined period ('today', 'month')
+      - in: query
+        name: to_date
+        schema:
+          type: string
+          format: date
+        description: End date for the report (YYYY-MM-DD)
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineReportResponse'
+              examples:
+                SuccessResponse:
+                  value:
+                    metadata:
+                      from_date: '2025-04-01'
+                      to_date: '2025-04-16'
+                      total_price: '1250.00'
+                      filters_applied:
+                        area: New York
+                        period: month
+                    medicines:
+                    - medicine_name: Amoxicillin
+                      total_quantity: 50
+                      price_per_unit: '8.50'
+                      total_price: '425.00'
+                  summary: Success Response
+          description: ''
+  /api/medicines/:
+    get:
+      operationId: medicines_list
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMedicineList'
+          description: ''
+    post:
+      operationId: medicines_create
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      tags:
+      - medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MedicineRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Resource created successfully
+        '400':
+          description: Invalid data provided
+  /api/medicines/{id}/:
+    get:
+      operationId: medicines_retrieve
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this medicine.
+        required: true
+      tags:
+      - medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicine'
+          description: ''
+    put:
+      operationId: medicines_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this medicine.
+        required: true
+      tags:
+      - medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MedicineRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource updated successfully
+        '404':
+          description: Resource not found
+    patch:
+      operationId: medicines_partial_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this medicine.
+        required: true
+      tags:
+      - medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMedicineRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicine'
+          description: ''
+    delete:
+      operationId: medicines_destroy
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this medicine.
+        required: true
+      tags:
+      - medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource deleted successfully
+        '404':
+          description: Resource not found
+  /api/patients/:
+    get:
+      operationId: patients_list
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - patients
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPatientList'
+          description: ''
+    post:
+      operationId: patients_create
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      tags:
+      - patients
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Resource created successfully
+        '400':
+          description: Invalid data provided
+  /api/patients/{id}/:
+    get:
+      operationId: patients_retrieve
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this patient.
+        required: true
+      tags:
+      - patients
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    put:
+      operationId: patients_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this patient.
+        required: true
+      tags:
+      - patients
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource updated successfully
+        '404':
+          description: Resource not found
+    patch:
+      operationId: patients_partial_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this patient.
+        required: true
+      tags:
+      - patients
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPatientRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPatientRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPatientRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    delete:
+      operationId: patients_destroy
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this patient.
+        required: true
+      tags:
+      - patients
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource deleted successfully
+        '404':
+          description: Resource not found
+  /api/patients/{id}/given_medicines/:
+    get:
+      operationId: patients_given_medicines_retrieve
+      description: Get all given medicines for a specific patient
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this patient.
+        required: true
+      tags:
+      - patients
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/patients/{id}/prescribed_medicines/:
+    get:
+      operationId: patients_prescribed_medicines_retrieve
+      description: Get all prescribed medicines for a specific patient
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this patient.
+        required: true
+      tags:
+      - patients
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/patients/{id}/records/:
+    get:
+      operationId: patients_records_retrieve
+      description: Get all records for a specific patient
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this patient.
+        required: true
+      tags:
+      - patients
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/prescribed-medicines/:
+    get:
+      operationId: prescribed_medicines_list
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - prescribed-medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPrescribedMedicineList'
+          description: ''
+    post:
+      operationId: prescribed_medicines_create
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      tags:
+      - prescribed-medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescribedMedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PrescribedMedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PrescribedMedicineRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Resource created successfully
+        '400':
+          description: Invalid data provided
+  /api/prescribed-medicines/{id}/:
+    get:
+      operationId: prescribed_medicines_retrieve
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this prescribed medicine.
+        required: true
+      tags:
+      - prescribed-medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescribedMedicine'
+          description: ''
+    put:
+      operationId: prescribed_medicines_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this prescribed medicine.
+        required: true
+      tags:
+      - prescribed-medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescribedMedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PrescribedMedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PrescribedMedicineRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource updated successfully
+        '404':
+          description: Resource not found
+    patch:
+      operationId: prescribed_medicines_partial_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this prescribed medicine.
+        required: true
+      tags:
+      - prescribed-medicines
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescribedMedicineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescribedMedicineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPrescribedMedicineRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescribedMedicine'
+          description: ''
+    delete:
+      operationId: prescribed_medicines_destroy
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this prescribed medicine.
+        required: true
+      tags:
+      - prescribed-medicines
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource deleted successfully
+        '404':
+          description: Resource not found
+  /api/records/:
+    get:
+      operationId: records_list
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - records
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRecordList'
+          description: ''
+    post:
+      operationId: records_create
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      tags:
+      - records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Resource created successfully
+        '400':
+          description: Invalid data provided
+  /api/records/{id}/:
+    get:
+      operationId: records_retrieve
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this record.
+        required: true
+      tags:
+      - records
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+          description: ''
+    put:
+      operationId: records_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this record.
+        required: true
+      tags:
+      - records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource updated successfully
+        '404':
+          description: Resource not found
+    patch:
+      operationId: records_partial_update
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this record.
+        required: true
+      tags:
+      - records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRecordRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'
+          description: ''
+    delete:
+      operationId: records_destroy
+      description: Base ViewSet that implements standard success messages for create,
+        update and delete operations
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this record.
+        required: true
+      tags:
+      - records
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Resource deleted successfully
+        '404':
+          description: Resource not found
+  /api/token/:
+    post:
+      operationId: token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/token/refresh/:
+    post:
+      operationId: token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/users/:
+    get:
+      operationId: users_list
+      description: ViewSet for viewing and editing user information.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: role
+        schema:
+          type: string
+          enum:
+          - admin
+          - doctor
+          - pharmacist
+          - reception
+        description: |-
+          * `reception` - Reception
+          * `doctor` - Doctor
+          * `pharmacist` - Pharmacist
+          * `admin` - Admin
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: secondary_role
+        schema:
+          type: string
+          nullable: true
+          enum:
+          - admin
+          - doctor
+          - pharmacist
+          - reception
+        description: |-
+          * `reception` - Reception
+          * `doctor` - Doctor
+          * `pharmacist` - Pharmacist
+          * `admin` - Admin
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomUserListList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: users_create
+      description: ViewSet for viewing and editing user information.
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCreate'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: users_retrieve
+      description: ViewSet for viewing and editing user information.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUserList'
+          description: ''
+    put:
+      operationId: users_update
+      description: Fully update a user's information. All fields except password are
+        required.
+      summary: Update a user
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+            examples:
+              ValidRequest:
+                value:
+                  username: updateduser
+                  password: newpass123
+                  role: doctor
+                  secondary_role: reception
+                summary: Valid Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUserList'
+          description: User updated successfully
+        '400':
+          description: Invalid data provided
+    patch:
+      operationId: users_partial_update
+      description: Update specific fields of a user. Only provide the fields that
+        need to be updated.
+      summary: Partially update a user
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+            examples:
+              UpdateRoleOnly:
+                value:
+                  role: pharmacist
+                  secondary_role: 'null'
+                summary: Update Role Only
+              UpdatePasswordOnly:
+                value:
+                  password: newpassword123
+                summary: Update Password Only
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUserList'
+          description: User partially updated successfully
+        '400':
+          description: Invalid data provided
+    delete:
+      operationId: users_destroy
+      description: ViewSet for viewing and editing user information.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    CustomUserList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        roles:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - roles
+      - username
+    Doctor:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user_id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        specialization:
+          type: string
+          maxLength: 255
+        mobile_number:
+          type: string
+          maxLength: 20
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - mobile_number
+      - name
+      - specialization
+      - user_id
+      - username
+    DoctorRequest:
+      type: object
+      properties:
+        user:
+          type: integer
+          writeOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        specialization:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mobile_number:
+          type: string
+          minLength: 1
+          maxLength: 20
+      required:
+      - mobile_number
+      - name
+      - specialization
+      - user
+    FiltersApplied:
+      type: object
+      properties:
+        area:
+          type: string
+          nullable: true
+        period:
+          type: string
+          nullable: true
+      required:
+      - area
+      - period
+    GenderEnum:
+      enum:
+      - male
+      - female
+      type: string
+      description: |-
+        * `male` - Male
+        * `female` - Female
+    GivedMedicine:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        patient:
+          type: integer
+        prescribed_medicine:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        given_at:
+          type: string
+          format: date-time
+          readOnly: true
+        medicine_name:
+          type: string
+          readOnly: true
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        medicine_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+      required:
+      - given_at
+      - id
+      - medicine_name
+      - medicine_price
+      - patient
+      - quantity
+      - total_price
+    GivedMedicineRequest:
+      type: object
+      properties:
+        patient:
+          type: integer
+        prescribed_medicine:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        medicine:
+          type: integer
+          writeOnly: true
+        dosage:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - patient
+      - quantity
+    Medicine:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        dose:
+          type: string
+          maxLength: 100
+        scientific_name:
+          type: string
+          maxLength: 255
+        company:
+          type: string
+          maxLength: 255
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - dose
+      - id
+      - name
+      - price
+    MedicineReportDetail:
+      type: object
+      properties:
+        medicine_name:
+          type: string
+        total_quantity:
+          type: integer
+        price_per_unit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - medicine_name
+      - price_per_unit
+      - total_price
+      - total_quantity
+    MedicineReportMetadata:
+      type: object
+      properties:
+        from_date:
+          type: string
+          format: date
+        to_date:
+          type: string
+          format: date
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        filters_applied:
+          $ref: '#/components/schemas/FiltersApplied'
+      required:
+      - filters_applied
+      - from_date
+      - to_date
+      - total_price
+    MedicineReportResponse:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/MedicineReportMetadata'
+        medicines:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicineReportDetail'
+      required:
+      - medicines
+      - metadata
+    MedicineRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        dose:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scientific_name:
+          type: string
+          maxLength: 255
+        company:
+          type: string
+          maxLength: 255
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - dose
+      - name
+      - price
+    NullEnum:
+      enum:
+      - null
+    PaginatedCustomUserListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomUserList'
+    PaginatedDoctorList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Doctor'
+    PaginatedGivedMedicineList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/GivedMedicine'
+    PaginatedMedicineList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medicine'
+    PaginatedPatientList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patient'
+    PaginatedPrescribedMedicineList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescribedMedicine'
+    PaginatedRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
+    PatchedDoctorRequest:
+      type: object
+      properties:
+        user:
+          type: integer
+          writeOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        specialization:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mobile_number:
+          type: string
+          minLength: 1
+          maxLength: 20
+    PatchedGivedMedicineRequest:
+      type: object
+      properties:
+        patient:
+          type: integer
+        prescribed_medicine:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        medicine:
+          type: integer
+          writeOnly: true
+        dosage:
+          type: string
+          writeOnly: true
+          minLength: 1
+    PatchedMedicineRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        dose:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scientific_name:
+          type: string
+          maxLength: 255
+        company:
+          type: string
+          maxLength: 255
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+    PatchedPatientRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        age:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        gender:
+          $ref: '#/components/schemas/GenderEnum'
+        area:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mobile_number:
+          type: string
+          minLength: 1
+          maxLength: 20
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        is_waiting:
+          type: boolean
+    PatchedPrescribedMedicineRequest:
+      type: object
+      properties:
+        record:
+          type: integer
+        medicine:
+          type: integer
+        dosage:
+          type: string
+          minLength: 1
+          maxLength: 100
+        patient:
+          type: integer
+          writeOnly: true
+    PatchedRecordRequest:
+      type: object
+      properties:
+        patient:
+          type: integer
+        doctor:
+          type: integer
+        vital_signs:
+          type: string
+        past_illnesses:
+          type: string
+        issued_date:
+          type: string
+          format: date
+        is_default:
+          type: boolean
+    PatchedUserUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 5
+          description: Must be at least 5 characters long.
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        secondary_role:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SecondaryRoleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+    Patient:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 255
+        age:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        gender:
+          $ref: '#/components/schemas/GenderEnum'
+        area:
+          type: string
+          maxLength: 255
+        mobile_number:
+          type: string
+          maxLength: 20
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        is_waiting:
+          type: boolean
+        records_count:
+          type: integer
+          readOnly: true
+        last_visit:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - age
+      - area
+      - full_name
+      - gender
+      - id
+      - last_visit
+      - mobile_number
+      - records_count
+    PatientRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        age:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        gender:
+          $ref: '#/components/schemas/GenderEnum'
+        area:
+          type: string
+          minLength: 1
+          maxLength: 255
+        mobile_number:
+          type: string
+          minLength: 1
+          maxLength: 20
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        is_waiting:
+          type: boolean
+      required:
+      - age
+      - area
+      - full_name
+      - gender
+      - mobile_number
+    PrescribedMedicine:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        record:
+          type: integer
+        medicine:
+          type: integer
+        medicine_name:
+          type: string
+          readOnly: true
+        medicine_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        dosage:
+          type: string
+          maxLength: 100
+      required:
+      - dosage
+      - id
+      - medicine
+      - medicine_name
+      - medicine_price
+    PrescribedMedicineRequest:
+      type: object
+      properties:
+        record:
+          type: integer
+        medicine:
+          type: integer
+        dosage:
+          type: string
+          minLength: 1
+          maxLength: 100
+        patient:
+          type: integer
+          writeOnly: true
+      required:
+      - dosage
+      - medicine
+    Record:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        patient:
+          type: integer
+        doctor:
+          type: integer
+        doctor_name:
+          type: string
+          readOnly: true
+        doctor_specialization:
+          type: string
+          readOnly: true
+        vital_signs:
+          type: string
+        past_illnesses:
+          type: string
+        issued_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_default:
+          type: boolean
+        prescribed_medicines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescribedMedicine'
+          readOnly: true
+        total_medicine_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        total_prescribed_medicines:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - doctor
+      - doctor_name
+      - doctor_specialization
+      - id
+      - issued_date
+      - patient
+      - prescribed_medicines
+      - total_medicine_price
+      - total_prescribed_medicines
+    RecordRequest:
+      type: object
+      properties:
+        patient:
+          type: integer
+        doctor:
+          type: integer
+        vital_signs:
+          type: string
+        past_illnesses:
+          type: string
+        issued_date:
+          type: string
+          format: date
+        is_default:
+          type: boolean
+      required:
+      - doctor
+      - issued_date
+      - patient
+    RoleEnum:
+      enum:
+      - reception
+      - doctor
+      - pharmacist
+      - admin
+      type: string
+      description: |-
+        * `reception` - Reception
+        * `doctor` - Doctor
+        * `pharmacist` - Pharmacist
+        * `admin` - Admin
+    SecondaryRoleEnum:
+      enum:
+      - reception
+      - doctor
+      - pharmacist
+      - admin
+      type: string
+      description: |-
+        * `reception` - Reception
+        * `doctor` - Doctor
+        * `pharmacist` - Pharmacist
+        * `admin` - Admin
+    StatusEnum:
+      enum:
+      - active
+      - pending
+      - inactive
+      type: string
+      description: |-
+        * `active` - Active
+        * `pending` - Pending
+        * `inactive` - Not Active
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        secondary_role:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SecondaryRoleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - role
+      - username
+    UserCreateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 5
+          description: Required. Must be at least 5 characters long.
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        secondary_role:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SecondaryRoleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - password
+      - role
+      - username
+    UserUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 5
+          description: Must be at least 5 characters long.
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        secondary_role:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SecondaryRoleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - role
+      - username
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+- name: patients
+  description: Patient management operations
+- name: medicines
+  description: Medicine inventory operations
+- name: records
+  description: Medical records operations
+- name: doctors
+  description: Doctor management operations
+- name: prescribed-medicines
+  description: Prescription management operations
+- name: reports
+  description: Report generation endpoints
