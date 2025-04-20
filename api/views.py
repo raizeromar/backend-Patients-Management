@@ -5,17 +5,17 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine, CustomUser
+from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, GivedMedicine, CustomUser
 from .serializers import (
     UserCreateSerializer,
     UserUpdateSerializer,
+    CustomUserListSerializer,
     PatientSerializer, PatientDetailSerializer,
     MedicineSerializer, RecordSerializer,
     PrescribedMedicineSerializer, DoctorSerializer,
-    PastIllnessSerializer, GivedMedicineSerializer,
-    CustomUserListSerializer
+    GivedMedicineSerializer,
 )
-from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse, OpenApiParameter, inline_serializer
+from drf_spectacular.utils import extend_schema, extend_schema_field, OpenApiExample, OpenApiResponse, OpenApiParameter, inline_serializer
 from drf_spectacular.types import OpenApiTypes
 from datetime import datetime, timedelta
 from django.db.models import Sum, F
@@ -25,6 +25,8 @@ from django.http import Http404
 
 User = get_user_model()
 
+# Exclude health check from schema
+@extend_schema(exclude=True)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
@@ -293,20 +295,10 @@ class GivedMedicineViewSet(BaseViewSet):
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-class PastIllnessViewSet(BaseViewSet):
-    queryset = Past_Illness.objects.all()
-    serializer_class = PastIllnessSerializer
-    model_name = "Past illness"
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['description']
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        patient = self.request.query_params.get('patient', None)
-        
-        if patient:
-            queryset = queryset.filter(patient=patient)
-        return queryset
+# Remove PastIllnessViewSet
+# class PastIllnessViewSet(BaseViewSet):
+#     ....
+
 
 @extend_schema(
     tags=['reports'],
@@ -476,8 +468,9 @@ class UserViewSet(viewsets.ModelViewSet):
     ViewSet for viewing and editing user information.
     """
     queryset = CustomUser.objects.all()
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['username', 'email', 'role', 'secondary_role']
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    search_fields = ['username']
+    filterset_fields = ['role', 'secondary_role']
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -567,9 +560,11 @@ class UserViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
-    def get_queryset(self):
-        queryset = CustomUser.objects.all()
-        role = self.request.query_params.get('role', None)
-        if role:
-            queryset = queryset.filter(role=role)
-        return queryset
+    @extend_schema(
+        responses={
+            200: CustomUserListSerializer,
+            400: OpenApiTypes.OBJECT,
+        }
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)

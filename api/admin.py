@@ -1,8 +1,7 @@
 from django.contrib import admin
-from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine
+from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, GivedMedicine, CustomUser
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
-from .models import CustomUser
 
 
 @admin.register(CustomUser)
@@ -34,10 +33,10 @@ class PatientAdmin(admin.ModelAdmin):
     list_filter = ('status', 'gender', 'is_waiting')
     readonly_fields = ('created_at', 'updated_at')
 
-@admin.register(Past_Illness)
-class PastIllnessAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'description')
-    search_fields = ('patient__full_name', 'description')
+# @admin.register(Past_Illness)
+# class PastIllnessAdmin(admin.ModelAdmin):
+#     list_display = ('patient', 'description')
+#     search_fields = ('patient__full_name', 'description')
 
 @admin.register(Medicine)
 class MedicineAdmin(admin.ModelAdmin):

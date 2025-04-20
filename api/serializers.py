@@ -3,7 +3,8 @@ from rest_framework import serializers
 from django.core.validators import MinLengthValidator
 from datetime import datetime
 from drf_spectacular.utils import extend_schema_field
-from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, Past_Illness, GivedMedicine, CustomUser
+from drf_spectacular.types import OpenApiTypes
+from .models import Patient, Medicine, Record, PrescribedMedicine, Doctor, GivedMedicine, CustomUser
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 User = get_user_model()
@@ -95,10 +96,17 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class PastIllnessSerializer(serializers.ModelSerializer):
+class CustomUserListSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Past_Illness
-        fields = ['id', 'description']
+        model = CustomUser
+        fields = ['id', 'username', 'role', 'secondary_role']
+        read_only_fields = fields
+
+# Remove PastIllnessSerializer
+# class PastIllnessSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Past_Illness
+#         fields = ['id', 'description']
 
 class MedicineSerializer(serializers.ModelSerializer):
     class Meta:
@@ -269,18 +277,18 @@ class GivedMedicineSerializer(serializers.ModelSerializer):
 
 class RecordSerializer(serializers.ModelSerializer):
     prescribed_medicines = PrescribedMedicineSerializer(many=True, read_only=True)
-    past_illness = PastIllnessSerializer(read_only=True)
     total_medicine_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     doctor_name = serializers.CharField(source='doctor.name', read_only=True)
     doctor_specialization = serializers.CharField(source='doctor.specialization', read_only=True)
-    total_prescribed_medicines = serializers.IntegerField(read_only=True)  # Updated field name
-    
+    total_prescribed_medicines = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Record
         fields = [
             'id', 'patient', 'doctor', 'doctor_name', 'doctor_specialization',
-            'past_illness', 'vital_signs', 'issued_date', 'created_at',
-            'prescribed_medicines', 'total_medicine_price', 'total_prescribed_medicines'  # Updated field name
+            'vital_signs', 'past_illnesses', 'issued_date', 'created_at',
+            'is_default', 'prescribed_medicines', 'total_medicine_price',
+            'total_prescribed_medicines'
         ]
 
     def to_representation(self, instance):
@@ -309,12 +317,10 @@ class PatientSerializer(serializers.ModelSerializer):
         return last_record.issued_date if last_record else None
 
 class PatientDetailSerializer(PatientSerializer):
-    past_illnesses = PastIllnessSerializer(many=True, read_only=True)
     total_medicine_price = serializers.SerializerMethodField()
     
     class Meta(PatientSerializer.Meta):
         fields = PatientSerializer.Meta.fields + [
-            'past_illnesses',
             'created_at',
             'updated_at',
             'total_medicine_price'

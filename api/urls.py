@@ -8,9 +8,10 @@ router.register(r'medicines', views.MedicineViewSet)
 router.register(r'records', views.RecordViewSet)
 router.register(r'prescribed-medicines', views.PrescribedMedicineViewSet)
 router.register(r'doctors', views.DoctorViewSet)
-router.register(r'past-illnesses', views.PastIllnessViewSet)
 router.register(r'given-medicines', views.GivedMedicineViewSet)
 router.register(r'users', views.UserViewSet)
+# Remove the past-illnesses endpoint
+# router.register(r'past-illnesses', views.PastIllnessViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
