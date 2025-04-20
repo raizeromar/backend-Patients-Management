@@ -32,9 +32,24 @@ def health_check(request):
 
 class BaseViewSet(viewsets.ModelViewSet):
     """
-    Base ViewSet that implements standard success messages for update and delete operations
+    Base ViewSet that implements standard success messages for create, update and delete operations
     """
     
+    @extend_schema(
+        responses={
+            201: OpenApiResponse(description="Resource created successfully"),
+            400: OpenApiResponse(description="Invalid data provided")
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        if response.status_code == 201:
+            response.data = {
+                "message": f"{self.model_name} created successfully",
+                "data": response.data
+            }
+        return response
+
     @extend_schema(
         responses={
             200: OpenApiResponse(description="Resource updated successfully"),
