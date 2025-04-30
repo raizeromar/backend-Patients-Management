@@ -202,6 +202,68 @@ class MedicineViewSet(ResultsListMixin, BaseViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'scientific_name', 'company']
 
+    @extend_schema(
+        summary="Create a new medicine",
+        description="Create a new medicine. If a medicine with the same name, dose, scientific name, and company already exists, returns the existing medicine's information.",
+        request=MedicineSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=MedicineSerializer,
+                description="Medicine created successfully"
+            ),
+            200: OpenApiResponse(
+                description="Medicine already exists",
+                examples=[
+                    OpenApiExample(
+                        'Existing Medicine',
+                        value={
+                            "message": "Medicine Already Exists",
+                            "medicine_id": 123,
+                            "data": {
+                                "id": 123,
+                                "name": "Paracetamol",
+                                "dose": "500mg",
+                                "scientific_name": "Acetaminophen",
+                                "company": "Pharma Corp",
+                                "price": "9.99"
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(description="Invalid data provided")
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        # Extract the relevant fields from the request data
+        name = request.data.get('name')
+        dose = request.data.get('dose')
+        scientific_name = request.data.get('scientific_name')
+        company = request.data.get('company')
+        
+        # Check if medicine already exists
+        existing_medicine = Medicine.objects.filter(
+            name=name,
+            dose=dose,
+            scientific_name=scientific_name,
+            company=company
+        ).first()
+        
+        if existing_medicine:
+            # Update the price if it's different
+            new_price = request.data.get('price')
+            if new_price and str(existing_medicine.price) != new_price:
+                existing_medicine.price = new_price
+                existing_medicine.save()
+            
+            return Response({
+                "message": "Medicine Already Exists",
+                "medicine_id": existing_medicine.id,
+                "data": MedicineSerializer(existing_medicine).data
+            }, status=status.HTTP_200_OK)
+            
+        return super().create(request, *args, **kwargs)
+
 class DoctorViewSet(ResultsListMixin, BaseViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
