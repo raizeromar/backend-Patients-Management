@@ -104,6 +104,62 @@ class PatientViewSet(ResultsListMixin, BaseViewSet):
     serializer_class = PatientSerializer
     model_name = "Patient"
     
+    @extend_schema(
+        summary="Create a new patient",
+        description="Create a new patient. If a patient with the same full_name, age, and gender already exists, returns the existing patient's information.",
+        request=PatientSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=PatientSerializer,
+                description="Patient created successfully"
+            ),
+            200: OpenApiResponse(
+                description="Patient already exists",
+                examples=[
+                    OpenApiExample(
+                        'Existing Patient',
+                        value={
+                            "message": "Patient Already Exists",
+                            "patient_id": 123,
+                            "data": {
+                                "id": 123,
+                                "full_name": "John Doe",
+                                "age": 30,
+                                "gender": "male",
+                                "area": "Test Area",
+                                "mobile_number": "+1234567890",
+                                "status": "active",
+                                "is_waiting": True
+                            }
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(description="Invalid data provided")
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        # Extract the relevant fields from the request data
+        full_name = request.data.get('full_name')
+        age = request.data.get('age')
+        gender = request.data.get('gender')
+        
+        # Check if patient already exists
+        existing_patient = Patient.objects.filter(
+            full_name=full_name,
+            age=age,
+            gender=gender
+        ).first()
+        
+        if existing_patient:
+            return Response({
+                "message": "Patient Already Exists",
+                "patient_id": existing_patient.id,
+                "data": PatientSerializer(existing_patient).data
+            }, status=status.HTTP_200_OK)
+            
+        return super().create(request, *args, **kwargs)
+    
     @action(detail=True, methods=['get'])
     def prescribed_medicines(self, request, pk=None):
         """Get all prescribed medicines for a specific patient"""
